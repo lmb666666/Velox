@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Clock3, Download, Gauge, Timer, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Download, Gauge, MapPin, Timer, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PulseMark } from '@/components/BrandLogo';
+import { ChinaMap } from '@/components/ChinaMap';
 import type { Frame, Mode, NodeStat, RunResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +54,12 @@ export function ResultPanel({
     const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(timer);
   }, [phase]);
+
+  // 地图省份筛选：任务切换时自动清空
+  const [mapFilter, setMapFilter] = useState<string | null>(null);
+  useEffect(() => {
+    setMapFilter(null);
+  }, [result, taskId]);
 
   if (phase === 'idle') {
     const steps = [
@@ -156,6 +163,26 @@ export function ResultPanel({
         </div>
       )}
 
+      {/* 中国地图（itdog 风格省份着色） */}
+      {summary && summary.mode !== 'traceroute' && summary.stats.some((s) => s.province !== '未知' && s.province !== '境外') && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              节点分布地图
+            </CardTitle>
+            {mapFilter && (
+              <button type="button" onClick={() => setMapFilter(null)} className="cursor-pointer">
+                <Badge variant="default">筛选: {mapFilter} ✕</Badge>
+              </button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <ChinaMap stats={summary.stats} filter={mapFilter} onFilterChange={setMapFilter} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* 分线路条形 */}
       {summary && summary.carriers.length > 0 && (
         <Card>
@@ -237,7 +264,14 @@ export function ResultPanel({
                 未收到完成信号（{result!.reason}），以下为已收到的部分结果
               </div>
             )}
-            {summary.mode === 'traceroute' ? <TracerouteView stats={summary.stats} /> : <StatsTable mode={summary.mode} stats={summary.stats} />}
+            {summary.mode === 'traceroute' ? (
+              <TracerouteView stats={summary.stats} />
+            ) : (
+              <StatsTable
+                mode={summary.mode}
+                stats={mapFilter ? summary.stats.filter((s) => s.province === mapFilter) : summary.stats}
+              />
+            )}
           </CardContent>
         </Card>
       )}

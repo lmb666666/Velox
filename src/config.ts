@@ -41,6 +41,26 @@ export const PROVINCE_BY_CODE: Record<number, string> = {
   28: '四川', 29: '宁夏', 30: '海南', 31: '台湾', 32: '香港', 33: '澳门', 99: '境外',
 };
 
+const CODE_BY_PROVINCE: [string, number][] = Object.entries(PROVINCE_BY_CODE)
+  .map(([code, name]) => [name, Number(code)] as [string, number])
+  .filter(([name]) => name !== '境外')
+  .sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * 从监测点名称推断省份编码（批量模式帧不带 province 字段时使用）。
+ * 例："北京3 - 联通" → 0；"内蒙古包头3 - 移动" → 20；"中国台湾台北2 - 海外" → 31
+ */
+export function provinceCodeFromName(name: string): number | undefined {
+  const clean = name
+    .replace(/\s*-\s*[^-]+$/, '')
+    .replace(/\d+/g, '')
+    .replace(/^中国/, '');
+  for (const [province, code] of CODE_BY_PROVINCE) {
+    if (clean.startsWith(province)) return code;
+  }
+  return undefined;
+}
+
 /** 大区编码表（WS 帧 region 字段） */
 export const REGION_BY_CODE: Record<number, string> = {
   1: '华东', 2: '华南', 3: '华中', 4: '华北', 5: '西南', 6: '西北', 7: '东北',

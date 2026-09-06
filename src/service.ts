@@ -3,7 +3,7 @@ import { streamTask } from './ws.js';
 import { buildTaskSpec, type ModeOptions } from './modes.js';
 import { selectNodes } from './nodes.js';
 import { buildSummary } from './aggregate.js';
-import { DEFAULT_UA } from './config.js';
+import { DEFAULT_UA, provinceCodeFromName } from './config.js';
 import type { Frame, Mode, RunResult } from './types.js';
 
 /**
@@ -152,6 +152,10 @@ export async function runTest(req: TestRequest, h: TestHandlers = {}): Promise<R
         if (info) {
           frame.name = info.name.replace(/\s*-\s*[^-]+$/, '');
           frame.line = CATEGORY_TO_LINE[info.category] ?? frame.line;
+          if (frame.province === undefined) {
+            const code = provinceCodeFromName(info.name);
+            if (code !== undefined) frame.province = code;
+          }
         } else if (spec.label && !frame.name) {
           frame.name = spec.label;
         }
