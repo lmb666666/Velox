@@ -221,7 +221,7 @@ export default function App() {
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6">
-        <div className="grid items-start gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
           <div className="space-y-4">
             <TestForm
               running={running}
@@ -239,7 +239,7 @@ export default function App() {
               activeId={viewHistory?.id ?? (task?.phase === 'done' ? task.id : undefined)}
             />
           </div>
-          <div className="space-y-3">
+          <div className="flex flex-col space-y-3">
             {viewHistory && (
               <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
                 <span>

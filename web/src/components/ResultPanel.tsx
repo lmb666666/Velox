@@ -105,7 +105,7 @@ export function ResultPanel({
   const summary = result?.summary;
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-1 flex-col space-y-4">
       {/* 运行中：状态卡 */}
       {running && (
         <Card>
@@ -259,7 +259,7 @@ export function ResultPanel({
 
       {/* 明细表 */}
       {summary && summary.stats.length > 0 && (
-        <Card>
+        <Card className="flex flex-1 flex-col">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm">
               节点明细 <span className="num text-muted-foreground">({summary.stats.length})</span>
@@ -284,7 +284,7 @@ export function ResultPanel({
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {!result!.finished && (
               <div className="mb-2 flex items-center gap-1.5 text-xs text-amber-500">
                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -305,11 +305,11 @@ export function ResultPanel({
 
       {/* 实时帧表（运行中且尚无汇总时也可见） */}
       {running && frames.length > 0 && (
-        <Card>
+        <Card className="flex flex-1 flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">实时结果流</CardTitle>
           </CardHeader>
-          <CardContent className="max-h-96 overflow-y-auto">
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
