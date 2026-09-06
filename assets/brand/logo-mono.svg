@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Pulse 脉测">
+  <!-- 单色版：透明底 + currentColor，深浅主题自适应 -->
+  <g fill="none" stroke="currentColor">
+    <polyline points="26,74 50,74 60,44 70,90 80,58 90,74 102,74" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <circle cx="26" cy="74" r="6.5" fill="currentColor"/>
+  <circle cx="102" cy="74" r="8" fill="currentColor"/>
+</svg>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Pulse 脉测 —— 全国监测节点测速与 IP/CDN 优选平台" />
+    <title>Pulse 脉测 · IP/CDN 网络优选平台</title>
+    <script>
+      // 主题初始化：避免闪屏（跟随系统 + localStorage 覆盖）
+      (function () {
+        try {
+          var t = localStorage.getItem('pulse-theme');
+          var dark = t === 'dark' || ((t === null || t === '') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

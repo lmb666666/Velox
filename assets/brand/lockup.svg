@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 128" width="420" height="128" role="img" aria-label="Pulse 脉测">
+  <!-- 横排组合：标志 + 字标（深色底使用；浅色底时文字色改 #18181B） -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#232329"/><stop offset="1" stop-color="#0A0A0C"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5EEAD4"/><stop offset=".5" stop-color="#22D3EE"/><stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity="0.4"/><stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="zh" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5EEAD4"/><stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 标志（缩放至 96×96） -->
+  <g transform="translate(8,16) scale(0.75)">
+    <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#tile)" stroke="#2E2E33" stroke-width="1.5"/>
+    <circle cx="102" cy="74" r="17" fill="url(#glow)"/>
+    <polyline points="26,74 50,74 60,44 70,90 80,58 90,74 102,74" fill="none" stroke="url(#wave)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="26" cy="74" r="6.5" fill="#67E8F9"/>
+    <circle cx="102" cy="74" r="8" fill="#22D3EE"/>
+  </g>
+
+  <!-- 字标 -->
+  <text x="122" y="62" fill="#FAFAFA" font-family="Inter, 'SF Pro Display', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="42" font-weight="700" letter-spacing="-1">Pulse</text>
+  <text x="272" y="62" fill="url(#zh)" font-family="'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="42" font-weight="700">脉测</text>
+  <text x="124" y="92" fill="#71717A" font-family="'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="16">每一次探测，都是脉搏</text>
+</svg>

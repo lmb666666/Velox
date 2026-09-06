@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pulse 脉测 品牌主题 —— 详见 docs/BRAND.md
+   主色：电光青 #22D3EE；中性：石墨 zinc 系 */
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 192 91% 36%;              /* 深青 #0891B2，浅色底上保证对比 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 185 60% 94%;
+    --accent-foreground: 192 91% 25%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 192 91% 36%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;          /* zinc-950 #09090B */
+    --foreground: 0 0% 98%;
+    --card: 240 6% 7%;                   /* 石墨面板 */
+    --card-foreground: 0 0% 98%;
+    --popover: 240 6% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 187 86% 53%;              /* 电光青 #22D3EE */
+    --primary-foreground: 240 10% 4%;
+    --secondary: 240 3.7% 15.9%;         /* zinc-800 */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 187 40% 14%;
+    --accent-foreground: 187 86% 70%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 187 86% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+  }
+}
+
+@layer utilities {
+  /* 数据数字：等宽对齐 */
+  .num {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  /* 品牌渐变文字 */
+  .brand-gradient-text {
+    background: linear-gradient(90deg, #5eead4, #22d3ee 55%, #38bdf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
