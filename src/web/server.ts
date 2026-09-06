@@ -10,7 +10,7 @@ import { allNodes, refreshNodesFromSite } from '../nodes.js';
 import { DEFAULT_UA } from '../config.js';
 
 /**
- * Pulse 脉测 Web 控制台后端：node:http 零框架。
+ * Velox Web 控制台后端：node:http 零框架。
  * REST 创建任务/查节点/查历史 + SSE 帧级实时推送；全局串行任务队列（对 itdog 友好）。
  */
 
@@ -233,7 +233,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   if (!pathname.startsWith('/api/')) return false;
 
   if (pathname === '/api/health' && req.method === 'GET') {
-    json(res, 200, { ok: true, brand: 'Pulse 脉测', tasks: tasks.size, nodes: allNodes().length });
+    json(res, 200, { ok: true, brand: 'Velox', tasks: tasks.size, nodes: allNodes().length });
     return true;
   }
 
@@ -386,7 +386,7 @@ export function startWebServer(port = 8818, host = '0.0.0.0'): void {
         if (handled) return;
         if (!webDist) {
           res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
-          res.end('<h1>Pulse 脉测</h1><p>前端尚未构建，请先运行：<code>pnpm web:build</code></p>');
+          res.end('<h1>Velox</h1><p>前端尚未构建，请先运行：<code>pnpm web:build</code></p>');
           return;
         }
         serveStatic(res, pathname, webDist);
@@ -397,7 +397,7 @@ export function startWebServer(port = 8818, host = '0.0.0.0'): void {
   });
   server.listen(port, host, () => {
     console.log('');
-    console.log('  ⚡ Pulse 脉测 —— Web 控制台已启动');
+    console.log('  ⚡ Velox —— Web 控制台已启动');
     console.log(`  ➜  http://localhost:${port}`);
     console.log(`  ➜  节点表：${allNodes().length} 个监测点${webDist ? '' : '（前端未构建：pnpm web:build）'}`);
     console.log('');

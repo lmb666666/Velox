@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PulseMark } from '@/components/BrandLogo';
+import { VeloxMark } from '@/components/BrandLogo';
 import { ChinaMap } from '@/components/ChinaMap';
 import type { Frame, Mode, NodeStat, RunResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -14,12 +14,15 @@ function fmtMs(v: number | undefined | null): string {
   return v === undefined || v === null || Number.isNaN(v) ? '-' : `${v} ms`;
 }
 
-/** 延迟色阶：≤50 优 / ≤150 良 / ≤300 中 / 更慢差 */
+/** 质量四级（品牌规范）：优 ≤50 / 良 ≤150 / 中 ≤300 / 差 >300，等级字标保证无障碍 */
+function gradeOf(ms: number): { label: string; cls: string } {
+  if (ms <= 50) return { label: '优', cls: 'grade-ok' };
+  if (ms <= 150) return { label: '良', cls: 'grade-fine' };
+  if (ms <= 300) return { label: '中', cls: 'grade-mid' };
+  return { label: '差', cls: 'grade-bad' };
+}
 function latencyClass(ms: number): string {
-  if (ms <= 50) return 'text-emerald-500';
-  if (ms <= 150) return 'text-amber-500';
-  if (ms <= 300) return 'text-orange-500';
-  return 'text-red-400';
+  return gradeOf(ms).cls;
 }
 
 function frameOk(f: Frame): boolean {
@@ -70,7 +73,7 @@ export function ResultPanel({
     return (
       <Card className="flex h-full min-h-80 items-center justify-center border-dashed">
         <div className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-          <PulseMark size={52} variant="mono" className="opacity-40" />
+          <VeloxMark size={52} variant="mono" className="opacity-40" />
           <div className="grid gap-3 sm:grid-cols-3">
             {steps.map((s) => (
               <div key={s.n} className="w-44 rounded-lg border bg-card/50 p-3">
@@ -107,7 +110,7 @@ export function ResultPanel({
       {running && (
         <Card>
           <CardContent className="flex items-center gap-4 py-4">
-            <PulseMark size={40} loading className="shrink-0" />
+            <VeloxMark size={40} loading className="shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-sm font-medium">
                 测试进行中
@@ -262,6 +265,17 @@ export function ResultPanel({
               节点明细 <span className="num text-muted-foreground">({summary.stats.length})</span>
             </CardTitle>
             <div className="flex gap-2">
+              {summary.targets.length === 1 && /[a-zA-Z]/.test(summary.targets[0]) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => downloadHosts(summary)}
+                  title="生成 hosts 优选文件（按实测延迟排序）"
+                >
+                  <Download className="h-3 w-3" /> Hosts
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => downloadCsv(summary)}>
                 <Download className="h-3 w-3" /> CSV
               </Button>
@@ -375,7 +389,14 @@ function StatsTable({ mode, stats }: { mode: Mode; stats: NodeStat[] }) {
               <TableCell className="num">{s.ip}</TableCell>
               {!isDns && (
                 <TableCell className={cn('num text-right', s.ok && s.latencyMs !== undefined ? latencyClass(s.latencyMs) : 'text-red-400')}>
-                  {s.ok ? fmtMs(s.latencyMs) : `失败(${s.failReason ?? '?'})`}
+                  {s.ok ? (
+                    <>
+                      {fmtMs(s.latencyMs)}
+                      <span className="ml-1 text-[10px] opacity-75">{gradeOf(s.latencyMs!).label}</span>
+                    </>
+                  ) : (
+                    `失败(${s.failReason ?? '?'})`
+                  )}
                 </TableCell>
               )}
               {isHttp && <TableCell className="num text-right">{s.detail?.httpCode ?? '-'}</TableCell>}
@@ -443,9 +464,30 @@ function downloadCsv(summary: RunResult['summary']): void {
       .map(esc)
       .join(','),
   );
-  download(`pulse-${summary.mode}-${Date.now()}.csv`, 'text/csv', [header.join(','), ...rows].join('\n') + '\n');
+  download(`velox-${summary.mode}-${Date.now()}.csv`, 'text/csv', [header.join(','), ...rows].join('\n') + '\n');
+}
+
+function downloadHosts(summary: RunResult['summary']): void {
+  const target = summary.targets[0] ?? '';
+  const lines: string[] = [
+    '# Velox IP 优选结果（Inspect. Select. Accelerate.）',
+    `# 目标: ${target} · 实测节点: ${summary.stats.length} · 生成时间: ${new Date().toLocaleString('zh-CN')}`,
+    '#',
+  ];
+  const seen = new Set<string>();
+  for (const s of summary.stats) {
+    if (!s.ok || !s.ip || seen.has(s.ip)) continue;
+    seen.add(s.ip);
+    lines.push(`${s.ip.padEnd(16)}  ${target}   # ${s.name} · ${s.latencyMs}ms`);
+    if (seen.size >= 10) break;
+  }
+  download(`velox-hosts-${target}-${Date.now()}.txt`, 'text/plain', lines.join('\n') + '\n');
 }
 
 function downloadJson(result: RunResult): void {
-  download(`pulse-${result.summary.mode}-${Date.now()}.json`, 'application/json', JSON.stringify(result, null, 2));
+  download(
+    `velox-${result.summary.mode}-${Date.now()}.json`,
+    'application/json',
+    JSON.stringify({ meta: { brand: 'Velox', generatedAt: new Date().toISOString() }, ...result }, null, 2),
+  );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BrandLockup, PulseMark } from '@/components/BrandLogo';
+import { BrandLockup, VeloxMark } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TestForm } from '@/components/TestForm';
 import { ResultPanel, type ResultPhase } from '@/components/ResultPanel';
@@ -250,9 +250,9 @@ export default function App() {
 
         <footer className="mt-10 flex flex-col items-center gap-1.5 border-t pt-6 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2">
-            <PulseMark size={16} variant="mono" className="opacity-60" />
+            <VeloxMark size={16} variant="mono" className="opacity-60" />
             <span>
-              Pulse 脉测 · 每一次探测，都是脉搏
+              Velox · Inspect. Select. Accelerate.
             </span>
           </div>
           <span>数据来源 itdog.cn · 非官方接口，仅供学习与个人测速，请控制频率</span>

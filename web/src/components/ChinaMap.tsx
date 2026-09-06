@@ -50,19 +50,19 @@ export interface ProvinceAgg {
 
 function fillColor(agg: ProvinceAgg | undefined): string {
   if (!agg || agg.total === 0) return 'hsl(240 5% 78%)';
-  if (agg.ok === 0) return '#f87171';
+  if (agg.ok === 0) return '#ff5c5c';
   const avg = agg.avg!;
-  if (avg <= 50) return '#34d399';
-  if (avg <= 150) return '#fbbf24';
-  if (avg <= 300) return '#fb923c';
-  return '#f87171';
+  if (avg <= 50) return '#00e5c7';   // 优
+  if (avg <= 150) return '#7c9fff';  // 良
+  if (avg <= 300) return '#ffb020';  // 中
+  return '#ff5c5c';                  // 差
 }
 
 const LEGEND = [
-  { label: '≤50ms', color: '#34d399' },
-  { label: '≤150ms', color: '#fbbf24' },
-  { label: '≤300ms', color: '#fb923c' },
-  { label: '>300ms', color: '#f87171' },
+  { label: '优 ≤50ms', color: '#00e5c7' },
+  { label: '良 ≤150ms', color: '#7c9fff' },
+  { label: '中 ≤300ms', color: '#ffb020' },
+  { label: '差 >300ms', color: '#ff5c5c' },
   { label: '无数据', color: 'hsl(240 5% 78%)' },
 ];
 

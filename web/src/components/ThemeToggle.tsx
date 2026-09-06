@@ -8,7 +8,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('pulse-theme', dark ? 'dark' : 'light');
+    localStorage.setItem('velox-theme', dark ? 'dark' : 'light');
   }, [dark]);
 
   return (

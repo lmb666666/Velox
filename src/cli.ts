@@ -117,7 +117,7 @@ function registerMode(mode: Mode, description: string): void {
 const program = new Command();
 program
   .name('itdog')
-  .description('Pulse 脉测 —— 本地调用 itdog.cn 全国监测节点测速（非官方接口，纯命令行）')
+  .description('Velox —— 调用 itdog.cn 全国监测节点测速与 IP 优选（非官方接口，纯命令行）')
   .version('0.2.0')
   .showHelpAfterError();
 
@@ -147,7 +147,7 @@ registerMode('batch-tcping', '批量 tcping（多目标 + 精确节点 ID）');
 
 program
   .command('serve')
-  .description('启动 Pulse Web 控制台')
+  .description('启动 Velox Web 控制台')
   .option('--port <port>', '监听端口', '8818')
   .option('--host <host>', '监听地址', '0.0.0.0')
   .action(async (opts) => {

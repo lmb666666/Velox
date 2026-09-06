@@ -1,5 +1,5 @@
 {
-  "name": "pulse-probe",
+  "name": "velox",
   "version": "0.2.0",
   "private": true,
   "description": "Pulse 脉测 —— 全国监测节点测速与 IP/CDN 优选平台（ping/tcping/http/dns/traceroute，支持批量）",
@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "bin": {
-    "pulse": "dist/cli.js",
+    "velox": "dist/cli.js",
     "itdog": "dist/cli.js"
   },
   "scripts": {
@@ -23,6 +23,8 @@
     "check:web": "tsc -p web --noEmit"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-progress": "^1.1.16",
     "@radix-ui/react-select": "^2.3.7",

@@ -2,53 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pulse 脉测 品牌主题 —— 详见 docs/BRAND.md
-   主色：电光青 #22D3EE；中性：石墨 zinc 系 */
+/* Velox 品牌主题 —— 详见 docs/BRAND.md
+   基底：深空近黑 #0A0E14（70%）· 强调：电光青 #00E5C7（20%）· 质量四级（10%） */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 240 10% 3.9%;
+    --background: 210 20% 98%;
+    --foreground: 220 18% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 18% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 192 91% 36%;              /* 深青 #0891B2，浅色底上保证对比 */
+    --popover-foreground: 220 18% 10%;
+    --primary: 172 90% 28%;               /* 浅色底上的加深电光青，保证对比 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 185 60% 94%;
-    --accent-foreground: 192 91% 25%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 215 16% 94%;
+    --secondary-foreground: 220 18% 12%;
+    --muted: 215 16% 94%;
+    --muted-foreground: 215 12% 44%;
+    --accent: 172 45% 93%;
+    --accent-foreground: 172 90% 20%;
+    --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 192 91% 36%;
-    --radius: 0.75rem;
+    --border: 215 18% 89%;
+    --input: 215 18% 89%;
+    --ring: 172 90% 28%;
+    --radius: 0.625rem;                    /* 品牌规范 8~12px，取 10px 精密感 */
+
+    /* 质量四级（优/良/中/差）——暗色系原值，浅色自动加深 */
+    --grade-ok: 172 90% 30%;
+    --grade-fine: 224 76% 52%;
+    --grade-mid: 36 92% 40%;
+    --grade-bad: 0 74% 48%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;          /* zinc-950 #09090B */
-    --foreground: 0 0% 98%;
-    --card: 240 6% 7%;                   /* 石墨面板 */
-    --card-foreground: 0 0% 98%;
-    --popover: 240 6% 7%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 187 86% 53%;              /* 电光青 #22D3EE */
-    --primary-foreground: 240 10% 4%;
-    --secondary: 240 3.7% 15.9%;         /* zinc-800 */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 187 40% 14%;
-    --accent-foreground: 187 86% 70%;
-    --destructive: 0 72% 51%;
+    --background: 216 33% 6%;              /* 深空近黑 #0A0E14 */
+    --foreground: 210 25% 95%;
+    --card: 217 27% 9.6%;                  /* 卡片层 #12161F */
+    --card-foreground: 210 25% 95%;
+    --popover: 217 27% 8%;
+    --popover-foreground: 210 25% 95%;
+    --primary: 170 100% 45%;               /* 电光青 #00E5C7 */
+    --primary-foreground: 180 60% 6%;
+    --secondary: 218 16% 14%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 218 16% 14%;
+    --muted-foreground: 216 12% 64%;
+    --accent: 172 45% 12%;
+    --accent-foreground: 170 80% 70%;
+    --destructive: 0 72% 56%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 187 86% 53%;
+    --border: 220 12% 17%;                 /* rgba(255,255,255,0.08) 等效 */
+    --input: 218 14% 20%;
+    --ring: 170 100% 45%;
+
+    --grade-ok: 170 100% 45%;
+    --grade-fine: 224 100% 74%;
+    --grade-mid: 38 100% 56%;
+    --grade-bad: 0 100% 68%;
   }
 }
 
@@ -56,17 +67,20 @@
   * {
     @apply border-border;
   }
+  html {
+    font-family: Inter, 'HarmonyOS Sans SC', 'MiSans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-variant-numeric: tabular-nums;
   }
   ::selection {
-    background: hsl(var(--primary) / 0.28);
+    background: hsl(var(--primary) / 0.25);
   }
 }
 
 @layer utilities {
-  /* 数据数字：等宽对齐 */
+  /* 数据数字：等宽 + 量化对齐（品牌硬性规则） */
   .num {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace;
     font-variant-numeric: tabular-nums;
@@ -74,11 +88,16 @@
   }
   /* 品牌渐变文字 */
   .brand-gradient-text {
-    background: linear-gradient(90deg, #5eead4, #22d3ee 55%, #38bdf8);
+    background: linear-gradient(90deg, #00e5c7, #7c9fff);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
+  /* 质量四级文字色 */
+  .grade-ok { color: hsl(var(--grade-ok)); }
+  .grade-fine { color: hsl(var(--grade-fine)); }
+  .grade-mid { color: hsl(var(--grade-mid)); }
+  .grade-bad { color: hsl(var(--grade-bad)); }
 }
 
 /* 细滚动条 */

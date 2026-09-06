@@ -1,7 +1,7 @@
-# Pulse 脉测（itdog-cli）
+# Velox（itdog 测速与 IP 优选平台）
 
 <p align="center">
-  <img src="assets/brand/logo.svg" width="96" alt="Pulse 脉测" />
+  <img src="assets/brand/logo.svg" width="96" alt="Velox" />
 </p>
 
 <p align="center">
@@ -10,10 +10,10 @@
   <img src="https://img.shields.io/badge/%E7%9B%91%E6%B5%8B%E7%82%B9-290%2B-38BDF8" alt="290+ 监测点" />
 </p>
 
-**Pulse 脉测** —— 全国监测节点测速与 IP/CDN 优选平台。输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。提供 **CLI** 与 **Web 控制台** 两种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，为后续 Cloudflare/多 CDN 自动优选预留架构。
+**Velox** —— 全国监测节点测速与 IP/CDN 优选平台。输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。提供 **CLI** 与 **Web 控制台** 两种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，为后续 Cloudflare/多 CDN 自动优选预留架构。
 
 > 非官方接口工具，仅供个人测速学习使用；请控制频率，勿用于压测或批量抓取。
-> 每一次探测，都是脉搏 —— *Feel the network's pulse.*
+> **Inspect. Select. Accelerate.** —— 测速发现问题，优选解决问题。
 
 ## 快速开始
 
