@@ -75,7 +75,8 @@ export function TestForm({
         <CardTitle className="text-base">新建测试</CardTitle>
         <CardDescription>{modeDef.hint}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
+        <form className="space-y-4" onSubmit={submit}>
         {/* 模式选择 */}
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="测速模式">
           {MODES.map((m) => {
@@ -209,12 +210,12 @@ export function TestForm({
         <Button
           type="submit"
           disabled={running || targets.length === 0}
-          onClick={submit}
           className="w-full bg-gradient-to-r from-teal-400 to-sky-500 font-semibold text-zinc-950 shadow-md transition-transform hover:from-teal-300 hover:to-sky-400 hover:shadow-lg hover:shadow-cyan-500/20 active:scale-[0.99] dark:text-zinc-950"
         >
           <Play className="h-4 w-4" />
           {running ? '测试进行中…' : `开始测速（${targets.length} 个目标）`}
         </Button>
+        </form>
       </CardContent>
     </Card>
   );

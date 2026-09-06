@@ -335,11 +335,38 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
     return true;
   }
 
-  const histMatch = /^\/api\/history\/([0-9a-f]+)$/.exec(pathname);
-  if (histMatch && req.method === 'GET') {
+  if (pathname === '/api/history' && req.method === 'DELETE') {
     try {
-      const raw = JSON.parse(fs.readFileSync(path.join(HISTORY_DIR, `${histMatch[1]}.json`), 'utf8'));
-      json(res, 200, raw);
+      for (const f of fs.readdirSync(HISTORY_DIR)) fs.rmSync(path.join(HISTORY_DIR, f));
+      json(res, 200, { ok: true });
+    } catch (e) {
+      json(res, 500, { error: (e as Error).message });
+    }
+    return true;
+  }
+
+  const histMatch = /^\/api\/history\/([0-9a-f]+)$/.exec(pathname);
+  if (histMatch && (req.method === 'GET' || req.method === 'DELETE')) {
+    const file = path.join(HISTORY_DIR, `${histMatch[1]}.json`);
+    if (req.method === 'DELETE') {
+      try {
+        fs.rmSync(file);
+        json(res, 200, { ok: true });
+      } catch {
+        json(res, 404, { error: '记录不存在' });
+      }
+      return true;
+    }
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+      // 顶层展开 result 字段，前端按 RunResult 形状消费
+      json(res, 200, {
+        ...raw,
+        summary: raw.result?.summary,
+        frames: raw.result?.frames ?? [],
+        finished: raw.result?.finished ?? false,
+        reason: raw.result?.reason ?? '',
+      });
     } catch {
       json(res, 404, { error: '记录不存在' });
     }

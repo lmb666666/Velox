@@ -214,3 +214,11 @@ export function getHistory(): Promise<{ items: HistoryItem[] }> {
 export function getHistoryDetail(id: string): Promise<HistoryDetail> {
   return jsonFetch(`/api/history/${id}`);
 }
+
+export function deleteHistory(id: string): Promise<{ ok: boolean }> {
+  return jsonFetch(`/api/history/${id}`, { method: 'DELETE' });
+}
+
+export function clearHistory(): Promise<{ ok: boolean }> {
+  return jsonFetch('/api/history', { method: 'DELETE' });
+}

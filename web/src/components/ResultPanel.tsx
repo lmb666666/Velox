@@ -125,6 +125,19 @@ export function ResultPanel({
         </Card>
       )}
 
+      {/* 任务元信息 */}
+      {summary && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{summary.mode}</Badge>
+          <span className="num text-sm font-medium">{summary.targets.join(', ')}</span>
+          {result!.finished ? (
+            <Badge variant="success">已完成</Badge>
+          ) : (
+            <Badge className="bg-amber-500/15 text-amber-500 hover:bg-amber-500/15">部分结果</Badge>
+          )}
+        </div>
+      )}
+
       {/* 汇总指标卡 */}
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
