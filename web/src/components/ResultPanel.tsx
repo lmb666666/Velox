@@ -71,7 +71,7 @@ export function ResultPanel({
       { n: '3', title: '实时看结果', desc: '逐帧推送，汇总排序，一键导出' },
     ];
     return (
-      <Card className="flex min-h-80 items-center justify-center border-dashed">
+      <Card className="flex min-h-80 flex-1 items-center justify-center border-dashed">
         <div className="flex flex-col items-center gap-6 px-6 py-10 text-center">
           <VeloxMark size={52} variant="mono" className="opacity-40" />
           <div className="grid gap-3 sm:grid-cols-3">

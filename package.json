@@ -20,7 +20,8 @@
     "refresh-guard": "node scripts/refresh-guard.mjs",
     "extract-strings": "node scripts/extract-strings.mjs",
     "fetch-china-geo": "node scripts/fetch-china-geo.mjs",
-    "check:web": "tsc -p web --noEmit"
+    "check:web": "tsc -p web --noEmit",
+    "layout-check": "node scripts/layout-check.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -53,6 +54,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.5.5",
+    "playwright": "^1.63.0",
     "postcss": "^8.5.28",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
