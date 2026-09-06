@@ -109,8 +109,8 @@ export function ResultPanel({
       {/* 运行中：状态卡 */}
       {running && (
         <Card>
-          <CardContent className="flex items-center gap-4 py-4">
-            <VeloxMark size={40} loading className="shrink-0" />
+          <CardContent className="flex min-h-[7.5rem] items-center gap-4 px-5 py-5">
+            <VeloxMark size={44} loading className="shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-sm font-medium">
                 测试进行中
@@ -143,7 +143,7 @@ export function ResultPanel({
 
       {/* 汇总指标卡 */}
       {summary && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { icon: Gauge, label: '平均延迟', value: fmtMs(summary.overallAvg), tint: 'bg-primary/10 text-primary' },
             { icon: Timer, label: '最快', value: fmtMs(summary.overallMin), tint: 'bg-emerald-500/10 text-emerald-500' },
@@ -162,15 +162,15 @@ export function ResultPanel({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, duration: 0.25 }}
             >
-              <Card className="transition-shadow hover:shadow-md">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', c.tint)}>
+              <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <CardContent className="flex flex-col gap-3 p-5">
+                  <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', c.tint)}>
                     <c.icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs text-muted-foreground">{c.label}</div>
-                    <div className="num truncate text-lg font-semibold">{c.value}</div>
-                    {c.sub && <div className="num text-[11px] text-muted-foreground">{c.sub}</div>}
+                    <div className="num mt-1.5 truncate text-[1.65rem] font-semibold leading-none">{c.value}</div>
+                    <div className="num mt-1.5 h-4 text-[11px] text-muted-foreground">{c.sub ?? ''}</div>
                   </div>
                 </CardContent>
               </Card>
