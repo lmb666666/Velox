@@ -68,7 +68,11 @@ const MIME: Record<string, string> = {
 
 function json(res: ServerResponse, code: number, data: unknown): void {
   const body = JSON.stringify(data);
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  res.writeHead(code, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+  });
   res.end(body);
 }
 
@@ -214,6 +218,7 @@ function serveStatic(res: ServerResponse, pathname: string, webDist: string): vo
     res.writeHead(200, {
       'content-type': MIME[path.extname(file)] ?? 'application/octet-stream',
       'cache-control': rel.startsWith('assets/') ? 'public, max-age=86400' : 'no-cache',
+      'x-content-type-options': 'nosniff',
     });
     res.end(data);
   } catch {

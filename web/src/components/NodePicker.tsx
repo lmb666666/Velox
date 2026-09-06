@@ -55,12 +55,8 @@ export function NodePicker({
   function addKeyword() {
     const kw = keyword.trim();
     if (!kw) return;
-    setSpecInternal(spec === 'all' || spec === '' ? kw : `${spec},${kw}`);
+    onSpecChange(spec === 'all' || spec === '' ? kw : `${spec},${kw}`);
     setKeyword('');
-  }
-
-  function setSpecInternal(next: string) {
-    onSpecChange(next);
   }
 
   const categories = nodesData?.categories ?? {};
@@ -81,7 +77,7 @@ export function NodePicker({
   }
 
   function applyPicked() {
-    setSpecInternal([...picked].join(','));
+    onSpecChange([...picked].join(','));
     setDialogOpen(false);
   }
 
@@ -92,7 +88,7 @@ export function NodePicker({
           <button
             key={p.label}
             type="button"
-            onClick={() => setSpecInternal(p.spec)}
+            onClick={() => onSpecChange(p.spec)}
             className={cn(
               'rounded-full border px-3 py-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground',
               spec === p.spec ? 'border-primary bg-primary/10 text-primary' : 'border-input text-muted-foreground',
@@ -125,7 +121,7 @@ export function NodePicker({
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="num">节点选择: {spec === 'all' ? '全部' : spec}</span>
-        {selectedCount !== null && <Badge variant="secondary" className="num">{selectedCount} 个节点</Badge>}
+        {selectedCount !== null && <Badge variant="secondary" className="num whitespace-nowrap">{selectedCount} 个节点</Badge>}
         {spec === 'all' && <span className="hidden sm:inline">（批量模式建议缩小范围以缩短耗时）</span>}
       </div>
 

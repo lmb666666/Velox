@@ -141,7 +141,7 @@ registerMode('ping', 'ICMP ping（多节点单目标）');
 registerMode('tcping', 'TCP 端口连通性/延迟（多节点单目标）');
 registerMode('http', 'HTTP 请求测速（多节点单 URL）');
 registerMode('dns', 'DNS 解析（多节点单域名）');
-registerMode('traceroute', '路由跟踪（多节点单目标）');
+registerMode('traceroute', '路由跟踪（单节点逐跳，取第一个匹配节点）');
 registerMode('batch-ping', '批量 ping（多目标 + 精确节点 ID）');
 registerMode('batch-tcping', '批量 tcping（多目标 + 精确节点 ID）');
 

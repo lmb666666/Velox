@@ -31,10 +31,9 @@ export function HistoryPanel({
   // 卸载时清理挂起的确认计时器
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  function confirmThen(action: () => void, reset: () => void) {
-    action();
-    const t = setTimeout(reset, 2500);
-    timers.current.add(t);
+  /** 进入确认态后 2.5s 未二次点击则自动复位 */
+  function scheduleReset(reset: () => void) {
+    timers.current.add(setTimeout(reset, 2500));
   }
 
   function handleDelete(id: string) {
@@ -43,7 +42,7 @@ export function HistoryPanel({
       setConfirmId(null);
     } else {
       setConfirmId(id);
-      confirmThen(() => {}, () => setConfirmId(null));
+      scheduleReset(() => setConfirmId(null));
     }
   }
 
@@ -53,7 +52,7 @@ export function HistoryPanel({
       setConfirmClear(false);
     } else {
       setConfirmClear(true);
-      confirmThen(() => {}, () => setConfirmClear(false));
+      scheduleReset(() => setConfirmClear(false));
     }
   }
 
@@ -86,8 +85,7 @@ export function HistoryPanel({
         {items.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">暂无历史记录</p>
         ) : (
-          <div className="space-y-1.5">
-            <div className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
+          <div className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
             {items.map((it) => (
               <div
                 key={it.id}
@@ -128,7 +126,6 @@ export function HistoryPanel({
             {confirmId && (
               <p className="text-center text-[11px] text-muted-foreground">再次点击垃圾桶图标确认删除</p>
             )}
-            </div>
           </div>
         )}
       </CardContent>

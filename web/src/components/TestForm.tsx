@@ -210,7 +210,7 @@ export function TestForm({
         <Button
           type="submit"
           disabled={running || targets.length === 0}
-          className="w-full bg-gradient-to-r from-teal-400 to-sky-500 font-semibold text-zinc-950 shadow-md transition-transform hover:from-teal-300 hover:to-sky-400 hover:shadow-lg hover:shadow-cyan-500/20 active:scale-[0.99] dark:text-zinc-950"
+          className="w-full font-semibold shadow-sm transition-transform active:scale-[0.99]"
         >
           <Play className="h-4 w-4" />
           {running ? '测试进行中…' : `开始测速（${targets.length} 个目标）`}

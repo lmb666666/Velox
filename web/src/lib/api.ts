@@ -1,4 +1,4 @@
-/** Pulse 后端 API 类型与请求封装 */
+/** Velox 后端 API 类型与请求封装 */
 
 export type Mode = 'ping' | 'tcping' | 'http' | 'dns' | 'traceroute' | 'batch-ping' | 'batch-tcping';
 

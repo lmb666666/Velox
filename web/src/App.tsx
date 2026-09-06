@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BrandLockup, VeloxMark } from '@/components/BrandLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { VeloxMark } from '@/components/BrandLogo';
+import { NavBar } from '@/components/NavBar';
 import { TestForm } from '@/components/TestForm';
 import { ResultPanel, type ResultPhase } from '@/components/ResultPanel';
 import { HistoryPanel } from '@/components/HistoryPanel';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   clearHistory,
   createTest,
@@ -100,9 +98,8 @@ export default function App() {
         onStatus: (line) => {
           setTask((t) => (t && t.id === id ? { ...t, statusLines: [...t.statusLines, line].slice(-6) } : t));
         },
-        onFrame: (frame, index) => {
+        onFrame: (frame) => {
           setTask((t) => (t && t.id === id ? { ...t, frames: [...t.frames, frame] } : t));
-          void index;
         },
         onDone: (result) => {
           setTask((t) => (t && t.id === id ? { ...t, phase: 'done', result } : t));
@@ -185,42 +182,9 @@ export default function App() {
       {/* 顶部品牌氛围光（深色下可见的微弱青色光晕） */}
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-0 h-64 bg-[radial-gradient(ellipse_60%_60%_at_50%_-10%,hsl(170_100%_45%/0.10),transparent)]" />
 
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandLockup loading={running} />
-            <Separator orientation="vertical" className="hidden h-6 sm:block" />
-            <span className="hidden text-xs text-muted-foreground md:block">
-              Inspect. Select. Accelerate.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full border border-border/80 bg-card/60 px-3 py-1.5 text-xs text-muted-foreground">
-              <span className="relative flex h-2 w-2">
-                <span
-                  className={cn(
-                    'absolute inline-flex h-full w-full animate-ping rounded-full opacity-60',
-                    running ? 'bg-primary' : 'bg-emerald-500',
-                  )}
-                  style={{ animationDuration: '2.4s' }}
-                />
-                <span
-                  className={cn(
-                    'relative inline-flex h-2 w-2 rounded-full',
-                    running ? 'bg-primary' : 'bg-emerald-500',
-                  )}
-                />
-              </span>
-              <span className="num">{nodesData ? nodesData.total : '…'}</span> 监测点在线
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-        {/* 品牌发丝线：1px 渐变 */}
-        <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      </header>
+      <NavBar running={running} nodesTotal={nodesData?.total} />
 
-      <main className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6">
         <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
           <div className="space-y-4">
             <TestForm

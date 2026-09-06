@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Clock3, Download, Gauge, MapPin, Timer, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Download, Gauge, MapPin, Timer, X, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,7 +83,7 @@ export function ResultPanel({
               </div>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">每一次探测，都是脉搏</p>
+          <p className="text-xs text-muted-foreground">Inspect. Select. Accelerate.</p>
         </div>
       </Card>
     );
@@ -103,6 +103,8 @@ export function ResultPanel({
 
   const running = phase === 'running';
   const summary = result?.summary;
+  // 实时流只展示最近 120 帧（最新的在最上面）
+  const recentFrames = frames.slice(-120).reverse();
 
   return (
     <div className="flex flex-1 flex-col space-y-4">
@@ -188,8 +190,13 @@ export function ResultPanel({
               节点分布地图
             </CardTitle>
             {mapFilter && (
-              <button type="button" onClick={() => setMapFilter(null)} className="cursor-pointer">
-                <Badge variant="default">筛选: {mapFilter} ✕</Badge>
+              <button
+                type="button"
+                onClick={() => setMapFilter(null)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                aria-label={`清除省份筛选 ${mapFilter}`}
+              >
+                {mapFilter} <X className="h-3 w-3" />
               </button>
             )}
           </CardHeader>
@@ -214,7 +221,7 @@ export function ResultPanel({
                   <span className="w-12 shrink-0 font-medium">{c.carrier}</span>
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-teal-400 to-sky-500"
+                      className="h-full rounded-full bg-primary"
                       initial={{ width: 0 }}
                       animate={{ width: `${width}%` }}
                       transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -265,12 +272,12 @@ export function ResultPanel({
               节点明细 <span className="num text-muted-foreground">({summary.stats.length})</span>
             </CardTitle>
             <div className="flex gap-2">
-              {summary.targets.length === 1 && /[a-zA-Z]/.test(summary.targets[0]) && (
+              {hostsHostname(summary.targets) && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 gap-1 text-xs"
-                  onClick={() => downloadHosts(summary)}
+                  onClick={() => downloadHosts(hostsHostname(summary.targets)!, summary)}
                   title="生成 hosts 优选文件（按实测延迟排序）"
                 >
                   <Download className="h-3 w-3" /> Hosts
@@ -320,7 +327,7 @@ export function ResultPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {frames.slice(-120).reverse().map((f, i) => {
+                {recentFrames.map((f, i) => {
                   const n = typeof f.result === 'number' ? f.result : Number.parseFloat(String(f.result ?? ''));
                   return (
                     <motion.tr
@@ -330,7 +337,7 @@ export function ResultPanel({
                       transition={{ duration: 0.2 }}
                       className="border-b text-xs"
                     >
-                      <td className="num px-2 py-1.5 text-muted-foreground">{frames.length - frames.slice(-120).length + i + 1}</td>
+                      <td className="num px-2 py-1.5 text-muted-foreground">{frames.length - i}</td>
                       <td className="px-2 py-1.5">{String(f.name ?? '')}</td>
                       <td className="num px-2 py-1.5">{String(f.ip ?? '')}</td>
                       <td className={cn('num px-2 py-1.5 text-right', frameOk(f) && Number.isFinite(n) ? latencyClass(n) : 'text-red-400')}>
@@ -467,21 +474,32 @@ function downloadCsv(summary: RunResult['summary']): void {
   download(`velox-${summary.mode}-${Date.now()}.csv`, 'text/csv', [header.join(','), ...rows].join('\n') + '\n');
 }
 
-function downloadHosts(summary: RunResult['summary']): void {
-  const target = summary.targets[0] ?? '';
+function downloadHosts(hostname: string, summary: RunResult['summary']): void {
   const lines: string[] = [
     '# Velox IP 优选结果（Inspect. Select. Accelerate.）',
-    `# 目标: ${target} · 实测节点: ${summary.stats.length} · 生成时间: ${new Date().toLocaleString('zh-CN')}`,
+    `# 目标: ${hostname} · 实测节点: ${summary.stats.length} · 生成时间: ${new Date().toLocaleString('zh-CN')}`,
     '#',
   ];
   const seen = new Set<string>();
   for (const s of summary.stats) {
     if (!s.ok || !s.ip || seen.has(s.ip)) continue;
     seen.add(s.ip);
-    lines.push(`${s.ip.padEnd(16)}  ${target}   # ${s.name} · ${s.latencyMs}ms`);
+    lines.push(`${s.ip.padEnd(16)}  ${hostname}   # ${s.name} · ${s.latencyMs}ms`);
     if (seen.size >= 10) break;
   }
-  download(`velox-hosts-${target}-${Date.now()}.txt`, 'text/plain', lines.join('\n') + '\n');
+  download(`velox-hosts-${hostname}.txt`, 'text/plain', lines.join('\n') + '\n');
+}
+
+/** hosts 导出仅对"单个主机名目标"有意义：剥掉 scheme/路径/端口，返回 null 表示不可导出 */
+function hostsHostname(targets: string[]): string | null {
+  if (targets.length !== 1) return null;
+  const t = targets[0];
+  try {
+    return new URL(t).hostname || null;
+  } catch {
+    const m = /^(?:https?:\/\/)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i.exec(t.trim());
+    return m ? m[1] : null;
+  }
 }
 
 function downloadJson(result: RunResult): void {
