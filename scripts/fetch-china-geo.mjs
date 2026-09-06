@@ -42,10 +42,22 @@ function simplifyGeometry(geom) {
   return geom;
 }
 
+/**
+ * 环绕向适配：GeoJSON RFC 7946 要求外环逆时针，而 d3-geo 的球面多边形语义相反
+ * （外环须顺时针，否则省份被渲染成「除本省外的整个投影平面」）。这里统一反转所有环。
+ */
+function toD3Winding(geom) {
+  if (geom.type === 'Polygon') return { ...geom, coordinates: geom.coordinates.map((r) => [...r].reverse()) };
+  if (geom.type === 'MultiPolygon') {
+    return { ...geom, coordinates: geom.coordinates.map((poly) => poly.map((r) => [...r].reverse())) };
+  }
+  return geom;
+}
+
 const features = geo.features.map((f) => ({
   type: 'Feature',
   properties: { name: f.properties.name ?? '', adcode: f.properties.adcode ?? '' },
-  geometry: simplifyGeometry(f.geometry),
+  geometry: toD3Winding(simplifyGeometry(f.geometry)),
 }));
 
 const simplified = { type: 'FeatureCollection', features };
