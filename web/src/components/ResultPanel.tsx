@@ -7,22 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VeloxMark } from '@/components/BrandLogo';
 import { ChinaMap } from '@/components/ChinaMap';
+import { gradeOf, latencyClass } from '@/lib/grade';
 import type { Frame, Mode, NodeStat, RunResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 function fmtMs(v: number | undefined | null): string {
   return v === undefined || v === null || Number.isNaN(v) ? '-' : `${v} ms`;
-}
-
-/** 质量四级（品牌规范）：优 ≤50 / 良 ≤150 / 中 ≤300 / 差 >300，等级字标保证无障碍 */
-function gradeOf(ms: number): { label: string; cls: string } {
-  if (ms <= 50) return { label: '优', cls: 'grade-ok' };
-  if (ms <= 150) return { label: '良', cls: 'grade-fine' };
-  if (ms <= 300) return { label: '中', cls: 'grade-mid' };
-  return { label: '差', cls: 'grade-bad' };
-}
-function latencyClass(ms: number): string {
-  return gradeOf(ms).cls;
 }
 
 function frameOk(f: Frame): boolean {

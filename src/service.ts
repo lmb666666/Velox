@@ -155,6 +155,7 @@ export async function runTest(req: TestRequest, h: TestHandlers = {}): Promise<R
           if (frame.province === undefined) {
             const code = provinceCodeFromName(info.name);
             if (code !== undefined) frame.province = code;
+            else if (info.category === '港澳台、海外') frame.province = 99; // 非中国节点统一记境外，与单目标模式一致
           }
         } else if (spec.label && !frame.name) {
           frame.name = spec.label;

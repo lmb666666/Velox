@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { geoConicEqualArea, geoPath } from 'd3-geo';
 import chinaData from '@/data/china-provinces.json';
+import { gradeOf, latencyClass } from '@/lib/grade';
 import type { NodeStat } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -22,8 +23,9 @@ const FEATURES = (chinaData as { features: GeoFeature[] }).features;
 const PROVINCE_FEATURES = FEATURES.filter((f) => f.properties.adcode !== '100000_JD');
 const JD_FEATURE = FEATURES.find((f) => f.properties.adcode === '100000_JD');
 
-function normProvince(name: string): string {
-  return name.replace(/(维吾尔|壮族|回族|特别行政|自治|省|市)/g, '');
+/** GeoJSON 全名（如 新疆维吾尔自治区）→ 统计用的短名（新疆），与 PROVINCE_BY_CODE 对齐 */
+export function normProvince(name: string): string {
+  return name.replace(/维吾尔|壮族|回族|特别行政区|自治区|特别行政|自治|省|市|区/g, '');
 }
 
 // 投影：Albers 等积圆锥（中国标准），主图不含南海要素，避免撑爆视野
@@ -48,14 +50,18 @@ export interface ProvinceAgg {
   nodes: NodeStat[];
 }
 
+/** 等级 → 填充色（与 lib/grade 四级一一对应，无数据为中性灰） */
+const GRADE_FILL: Record<string, string> = {
+  'grade-ok': '#00e5c7',
+  'grade-fine': '#7c9fff',
+  'grade-mid': '#ffb020',
+  'grade-bad': '#ff5c5c',
+};
+
 function fillColor(agg: ProvinceAgg | undefined): string {
   if (!agg || agg.total === 0) return 'hsl(240 5% 78%)';
-  if (agg.ok === 0) return '#ff5c5c';
-  const avg = agg.avg!;
-  if (avg <= 50) return '#00e5c7';   // 优
-  if (avg <= 150) return '#7c9fff';  // 良
-  if (avg <= 300) return '#ffb020';  // 中
-  return '#ff5c5c';                  // 差
+  if (agg.ok === 0 || agg.avg === undefined) return GRADE_FILL['grade-bad'];
+  return GRADE_FILL[gradeOf(agg.avg).cls];
 }
 
 const LEGEND = [
@@ -177,7 +183,7 @@ export function ChinaMap({
         >
           <div className="mb-1 flex items-center justify-between">
             <span className="font-semibold">{tooltip.agg.province}</span>
-            <span className={cn('num', tooltip.agg.avg !== undefined ? latencyTextClass(tooltip.agg.avg) : 'text-muted-foreground')}>
+            <span className={cn('num', tooltip.agg.avg !== undefined ? latencyClass(tooltip.agg.avg) : 'text-muted-foreground')}>
               {tooltip.agg.avg !== undefined ? `${tooltip.agg.avg} ms` : '无成功数据'}
             </span>
           </div>
@@ -220,11 +226,4 @@ export function ChinaMap({
       </div>
     </div>
   );
-}
-
-function latencyTextClass(ms: number): string {
-  if (ms <= 50) return 'text-emerald-500';
-  if (ms <= 150) return 'text-amber-500';
-  if (ms <= 300) return 'text-orange-500';
-  return 'text-red-400';
 }

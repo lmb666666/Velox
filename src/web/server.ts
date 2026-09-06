@@ -123,7 +123,10 @@ async function execute(entry: TaskEntry): Promise<void> {
   try {
     const result = await runTest(entry.req, {
       onStatus: (line) => broadcast(entry, 'status', { line }),
-      onFrame: (frame, index) => broadcast(entry, 'frame', { frame, index }),
+      onFrame: (frame) => {
+        entry.frames.push(frame); // 快照可回放（重连 SSE / 事后查询不丢帧）
+        broadcast(entry, 'frame', { frame, index: entry.frames.length });
+      },
     });
     entry.result = result;
     entry.state = 'done';
