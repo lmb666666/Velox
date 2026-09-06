@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Velox">
-  <!-- Velox 主标志 · 上升折线 × 三节点 · 规格 docs/BRAND.md -->
+  <!-- Velox 主标志 · 两笔式 V：左臂石墨下沉，右臂电光青上扬 · 规格 docs/BRAND.md -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#12161F"/><stop offset="1" stop-color="#0A0E14"/>
     </linearGradient>
-    <linearGradient id="veline" x1="0" y1="1" x2="1" y2="0">
+    <linearGradient id="rise" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#00E5C7"/><stop offset="1" stop-color="#7C9FFF"/>
     </linearGradient>
     <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#00E5C7" stop-opacity="0.35"/><stop offset="1" stop-color="#00E5C7" stop-opacity="0"/>
+      <stop offset="0" stop-color="#00E5C7" stop-opacity="0.4"/><stop offset="1" stop-color="#00E5C7" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#tile)" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1.5"/>
-  <circle cx="106" cy="26" r="17" fill="url(#glow)"/>
-  <polyline points="22,42 44,90 76,50 106,24" fill="none" stroke="url(#veline)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="22" cy="42" r="6" fill="#9AA7B8"/>
-  <circle cx="44" cy="90" r="5" fill="#00E5C7" fill-opacity="0.55"/>
-  <circle cx="106" cy="24" r="8" fill="#00E5C7"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#tile)" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1.5"/>
+  <circle cx="106" cy="24" r="19" fill="url(#glow)"/>
+  <polyline points="32,32 60,94" fill="none" stroke="#8A94A6" stroke-width="11" stroke-linecap="round"/>
+  <polyline points="60,94 106,24" fill="none" stroke="url(#rise)" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="7" fill="#B9C2CF"/>
+  <circle cx="106" cy="24" r="9" fill="#00E5C7"/>
 </svg>

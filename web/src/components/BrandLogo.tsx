@@ -2,10 +2,12 @@ import { cn } from '@/lib/utils';
 
 /**
  * Velox 品牌标志（docs/BRAND.md 规范内联渲染）
+ * 两笔式 V：左臂石墨下沉（测量），右臂电光青上扬（优选）。
  * variant:
- *  - tile   深色方砖主标志（电光青上升折线）
+ *  - tile   深色方砖主标志
  *  - mono   单色自适应（currentColor，跟随文字颜色）
- * loading=true 时折线变为流动信号（stroke-dash 动画）
+ * loading=true 时上扬臂变为流动信号（stroke-dash 动画）
+ * 与 assets/brand/logo.svg / favicon.svg 保持同一几何。
  */
 
 export function VeloxMark({
@@ -35,12 +37,12 @@ export function VeloxMark({
             <stop offset="0" stopColor="#12161F" />
             <stop offset="1" stopColor="#0A0E14" />
           </linearGradient>
-          <linearGradient id="vx-line" x1="0" y1="1" x2="1" y2="0">
+          <linearGradient id="vx-rise" x1="0" y1="1" x2="1" y2="0">
             <stop offset="0" stopColor="#00E5C7" />
             <stop offset="1" stopColor="#7C9FFF" />
           </linearGradient>
           <radialGradient id="vx-glow" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stopColor="#00E5C7" stopOpacity="0.35" />
+            <stop offset="0" stopColor="#00E5C7" stopOpacity="0.4" />
             <stop offset="1" stopColor="#00E5C7" stopOpacity="0" />
           </radialGradient>
         </defs>
@@ -51,36 +53,39 @@ export function VeloxMark({
           y="4"
           width="120"
           height="120"
-          rx="26"
+          rx="28"
           fill="url(#vx-tile)"
           stroke="#FFFFFF"
           strokeOpacity="0.1"
           strokeWidth="1.5"
         />
       )}
-      {!mono && <circle cx="106" cy="24" r="17" fill="url(#vx-glow)" />}
+      {!mono && <circle cx="106" cy="24" r="19" fill="url(#vx-glow)" />}
+      {/* 左臂：石墨下沉（测量） */}
       <polyline
-        points="22,42 44,90 76,50 106,24"
+        points="32,32 60,94"
         fill="none"
-        stroke={mono ? 'currentColor' : 'url(#vx-line)'}
-        strokeWidth="7"
+        stroke={mono ? 'currentColor' : '#8A94A6'}
+        strokeOpacity={mono ? 0.5 : undefined}
+        strokeWidth="11"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeDasharray={loading ? '30 24' : undefined}
+      />
+      {/* 右臂：电光青上扬（优选） */}
+      <polyline
+        points="60,94 106,24"
+        fill="none"
+        stroke={mono ? 'currentColor' : 'url(#vx-rise)'}
+        strokeWidth="11"
+        strokeLinecap="round"
         className={loading ? 'animate-pulse-dash' : undefined}
-        strokeDasharray={loading ? '26 30' : undefined}
+        strokeDasharray={loading ? '30 24' : undefined}
       />
-      <circle cx="22" cy="42" r="6" fill={mono ? 'currentColor' : '#9AA7B8'} />
-      <circle
-        cx="44"
-        cy="90"
-        r="5"
-        fill={mono ? 'currentColor' : '#00E5C7'}
-        fillOpacity={mono ? 0.55 : undefined}
-      />
+      <circle cx="32" cy="32" r="7" fill={mono ? 'currentColor' : '#B9C2CF'} fillOpacity={mono ? 0.5 : undefined} />
       <circle
         cx="106"
         cy="24"
-        r="8"
+        r="9"
         fill={mono ? 'currentColor' : '#00E5C7'}
         className={loading ? 'animate-pulse-glow' : undefined}
       />
@@ -91,13 +96,11 @@ export function VeloxMark({
 /** 页头横排组合：标志 + Velox 字标 + 定位语 */
 export function BrandLockup({ loading = false, className }: { loading?: boolean; className?: string }) {
   return (
-    <div className={cn('flex items-center gap-2.5', className)}>
-      <VeloxMark size={34} loading={loading} />
+    <div className={cn('flex items-center gap-3', className)}>
+      <VeloxMark size={36} loading={loading} />
       <div className="flex flex-col leading-none">
-        <span className="text-lg font-bold tracking-tight">
-          Velox<span className="brand-gradient-text">.</span>
-        </span>
-        <span className="mt-1 text-[11px] text-muted-foreground">IP/CDN 网络优选平台</span>
+        <span className="text-[17px] font-bold tracking-tight">Velox</span>
+        <span className="mt-1 text-[11px] text-muted-foreground">全网实测 · IP/CDN 优选</span>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Velox">
   <!-- 单色版：透明底 + currentColor，深浅主题自适应 -->
-  <polyline points="22,42 44,90 76,50 106,24" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="22" cy="42" r="6" fill="currentColor"/>
-  <circle cx="44" cy="90" r="5" fill="currentColor" fill-opacity="0.55"/>
-  <circle cx="106" cy="24" r="8" fill="currentColor"/>
+  <polyline points="32,32 60,94" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-opacity="0.5"/>
+  <polyline points="60,94 106,24" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="7" fill="currentColor" fill-opacity="0.5"/>
+  <circle cx="106" cy="24" r="9" fill="currentColor"/>
 </svg>
