@@ -87,6 +87,7 @@ export function ChinaMap({
         agg.ok++;
         agg.nodes.push(s);
       }
+      map.set(s.province, agg);
     }
     for (const agg of map.values()) {
       const lats = agg.nodes.map((n) => n.latencyMs!).filter((v) => Number.isFinite(v));
