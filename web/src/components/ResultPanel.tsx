@@ -318,7 +318,9 @@ export function ResultPanel({
               </TableHeader>
               <TableBody>
                 {recentFrames.map((f, i) => {
-                  const n = typeof f.result === 'number' ? f.result : Number.parseFloat(String(f.result ?? ''));
+                  // http 帧无 result 字段，用 all_time（秒）换算毫秒；其余模式 result 即毫秒
+                  const rawMs = f.result !== undefined ? f.result : f.all_time !== undefined ? Number(f.all_time) * 1000 : undefined;
+                  const n = typeof rawMs === 'number' ? rawMs : Number.parseFloat(String(rawMs ?? ''));
                   return (
                     <motion.tr
                       key={String(f.node_id ?? '') + i + String(f.ip)}
@@ -331,7 +333,11 @@ export function ResultPanel({
                       <td className="px-2 py-1.5">{String(f.name ?? '')}</td>
                       <td className="num px-2 py-1.5">{String(f.ip ?? '')}</td>
                       <td className={cn('num px-2 py-1.5 text-right', frameOk(f) && Number.isFinite(n) ? latencyClass(n) : 'text-red-400')}>
-                        {f.result !== undefined ? `${f.result} ms` : f.all_time !== undefined ? `${f.all_time} ms` : '失败'}
+                        {f.result !== undefined
+                          ? `${f.result} ms`
+                          : f.all_time !== undefined
+                            ? `${Math.round(Number(f.all_time) * 1000)} ms` // itdog http 耗时单位为秒
+                            : '失败'}
                       </td>
                     </motion.tr>
                   );

@@ -25,13 +25,17 @@ export interface TestRequest {
   retry?: number;
   proxy?: string;
   /** http 模式 */
-  checkMode?: 'fast' | 'detail';
+  checkMode?: 'fast' | 'slow';
   method?: string;
   referer?: string;
   cookie?: string;
   redirects?: number;
   httpVersion?: string;
-  /** dns 模式 */
+  /** http 模式：强制解析（官方表单 ipv4 字段，可填 IPv4 或域名） */
+  resolveTo?: string;
+  /** http 模式：监测节点请求目标时使用的 User-Agent（区别于本工具的任务创建 UA） */
+  httpUa?: string;
+  /** dns 模式 / 目标解析：自定义 DNS 服务器（非空时 dns_server_type=custom） */
   dnsType?: string;
   dnsServer?: string;
 }
@@ -89,13 +93,14 @@ export async function runTest(req: TestRequest, h: TestHandlers = {}): Promise<R
     targets,
     port: req.port ?? 443,
     nodes: req.nodes ?? 'all',
-    checkMode: req.checkMode === 'detail' ? 'detail' : 'fast',
+    checkMode: req.checkMode === 'slow' ? 'slow' : 'fast',
     method: req.method ?? 'get',
     referer: req.referer ?? '',
-    ua: req.ua ?? '',
+    ua: req.httpUa ?? '', // http 表单的 user-agent（目标请求 UA），与任务创建 UA 无关
     cookies: req.cookie ?? '',
     redirects: req.redirects ?? 5,
     httpVersion: req.httpVersion ?? 'auto',
+    resolveTo: req.resolveTo ?? '',
     dnsType: req.dnsType ?? 'a',
     dnsServer: req.dnsServer ?? '',
   };

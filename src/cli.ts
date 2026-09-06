@@ -38,10 +38,12 @@ async function runWithCliOutput(mode: Mode, targets: string[], opts: Record<stri
     ua,
     proxy: opts.proxy as string | undefined,
     retry: Number.parseInt(String(opts.retry ?? '2'), 10) || 0,
-    checkMode: opts.checkMode === 'detail' ? 'detail' : 'fast',
+    checkMode: opts.checkMode === 'slow' ? 'slow' : 'fast',
     method: String(opts.method ?? 'get'),
     referer: String(opts.referer ?? ''),
     cookie: String(opts.cookie ?? ''),
+    httpUa: String(opts.httpUa ?? ''),
+    resolveTo: String(opts.resolve ?? ''),
     redirects: Number.parseInt(String(opts.redirects ?? '5'), 10) || 5,
     httpVersion: String(opts.httpVersion ?? 'auto'),
     dnsType: String(opts.type ?? 'a'),
@@ -55,7 +57,10 @@ async function runWithCliOutput(mode: Mode, targets: string[], opts: Record<stri
       if (quiet || mode === 'traceroute') return; // traceroute 帧多，收完统一展示
       const name = String(frame.name ?? '');
       const ip = String(frame.ip ?? '');
-      const result2 = frame.result ?? (frame.all_time !== undefined ? `${frame.all_time}ms` : '');
+      // itdog http 帧的 all_time 单位是秒，统一换算为毫秒展示
+      const result2 =
+        frame.result ??
+        (frame.all_time !== undefined ? `${Math.round(Number(frame.all_time) * 1000)}ms` : '');
       const mark = frame.type && frame.type !== 'success' && mode === 'http' ? '✗' : ip === 'Not Found' ? '✗' : '✓';
       process.stdout.write(`  [${String(index).padStart(3)}] ${mark} ${name}  ${ip}${result2 !== '' ? `  ${result2}ms` : ''}\n`);
     },
@@ -90,19 +95,22 @@ function registerMode(mode: Mode, description: string): void {
   if (mode === 'tcping' || mode === 'batch-tcping') {
     cmd.option('--port <port>', '目标端口', '443');
   }
+  if (mode === 'ping' || mode === 'tcping' || mode === 'http' || mode === 'dns') {
+    cmd.option('--dns-server <server>', '目标解析使用的 DNS 服务器（默认运营商 DNS）', '');
+  }
   if (mode === 'http') {
     cmd
-      .option('--check-mode <mode>', 'fast | detail', 'fast')
+      .option('--check-mode <mode>', 'fast 快速 | slow 缓慢', 'fast')
       .option('--method <method>', 'HTTP 方法', 'get')
       .option('--referer <url>', '模拟 Referer', '')
       .option('--cookie <cookie>', '模拟 Cookie', '')
-      .option('--redirects <n>', '跟随重定向次数', '5')
+      .option('--http-ua <ua>', '目标请求 User-Agent（节点访问目标时使用）', '')
+      .option('--resolve <host>', '强制解析（IPv4 或域名，官方"指定解析"）', '')
+      .option('--redirects <n>', '跟随重定向次数（0~10）', '5')
       .option('--http-version <v>', 'auto | http_1_1 | http_2 | http_3', 'auto');
   }
   if (mode === 'dns') {
-    cmd
-      .option('--type <type>', 'DNS 记录类型 a/cname/mx/aaaa/ns/txt', 'a')
-      .option('--dns-server <server>', '自定义 DNS 服务器', '');
+    cmd.option('--type <type>', 'DNS 记录类型 a/cname/mx/aaaa/ns/txt', 'a');
   }
   cmd.action(async (targets: string[], opts) => {
     try {

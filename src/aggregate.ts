@@ -9,6 +9,12 @@ function parseLatency(v: unknown): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
+/** itdog http 帧的耗时字段（all/dns/connect/ssl/download）单位是秒，统一转毫秒 */
+function secondsToMs(v: unknown): number | undefined {
+  const n = parseLatency(v);
+  return n === undefined ? undefined : Math.round(n * 1000 * 10) / 10;
+}
+
 function validIp(ip: string | undefined): boolean {
   if (!ip) return false;
   return ip !== 'Not Found' && ip !== '0.0.0.0' && ip !== '' && ip !== '127.0.0.1';
@@ -29,18 +35,18 @@ export function normalizeFrame(frame: Frame, mode: Mode): NodeStat {
 
   if (mode === 'http') {
     const code = typeof frame.http_code === 'number' ? frame.http_code : 0;
-    const all = parseLatency(frame.all_time);
+    const all = secondsToMs(frame.all_time);
     base.ok = frame.type === 'success' && code > 0 && all !== undefined;
     base.latencyMs = all;
     base.failReason = base.ok ? undefined : code > 0 ? `HTTP ${code}` : String(frame.result ?? frame.type ?? '请求失败');
     base.detail = {
       httpCode: code > 0 ? code : undefined,
       allTime: all,
-      dnsTime: parseLatency(frame.dns_time),
-      connectTime: parseLatency(frame.connect_time),
-      sslTime: parseLatency(frame.ssl_time),
-      downloadTime: parseLatency(frame.download_time),
-      redirectTime: parseLatency(frame.redirect_time),
+      dnsTime: secondsToMs(frame.dns_time),
+      connectTime: secondsToMs(frame.connect_time),
+      sslTime: secondsToMs(frame.ssl_time),
+      downloadTime: secondsToMs(frame.download_time),
+      redirectTime: secondsToMs(frame.redirect_time),
     };
     return base;
   }

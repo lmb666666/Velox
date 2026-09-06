@@ -138,7 +138,7 @@ itdog http <URL> [专属选项]
 
 | 选项 | 说明 | 默认 |
 |---|---|---|
-| `--check-mode fast\|detail` | fast=快速模式；detail=详细模式 | fast |
+| `--check-mode fast\|slow` | fast=快速测试；slow=缓慢测试（更精细） | fast |
 | `--method <m>` | 请求方法（get/post/...） | get |
 | `--referer <url>` | 模拟的 Referer 头 | 空 |
 | `--cookie <c>` | 模拟的 Cookie | 空 |
@@ -147,7 +147,7 @@ itdog http <URL> [专属选项]
 
 ```bash
 itdog http https://www.baidu.com --nodes telecom --quiet
-itdog http my-api.example.com/health --method get --check-mode detail
+itdog http my-api.example.com/health --method get --check-mode slow
 itdog http https://example.com --http-version http_2
 ```
 

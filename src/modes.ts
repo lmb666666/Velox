@@ -12,21 +12,24 @@ export interface ModeOptions {
   /** 节点选择器（all / 分组 / 关键词 / id） */
   nodes: string;
   /** http 模式选项 */
-  checkMode: 'fast' | 'detail';
+  checkMode: 'fast' | 'slow';
   method: string;
   referer: string;
   ua: string;
   cookies: string;
   redirects: number;
   httpVersion: string;
+  /** http 模式：强制解析（官方 ipv4 字段，IPv4 或域名） */
+  resolveTo: string;
   /** dns 模式选项 */
   dnsType: string;
   dnsServer: string;
 }
 
+/** 目标解析 DNS：指定了服务器用 custom，否则运营商 DNS（官方页 radio 取值） */
 function dnsCommon(opts: ModeOptions): Record<string, string> {
   return {
-    dns_server_type: 'isp',
+    dns_server_type: opts.dnsServer ? 'custom' : 'isp',
     dns_server: opts.dnsServer ?? '',
   };
 }
@@ -67,7 +70,7 @@ export function buildTaskSpec(opts: ModeOptions): TaskSpec {
           host_s: safeHost(target),
           check_mode: opts.checkMode,
           http_version: opts.httpVersion,
-          ipv4: '',
+          ipv4: opts.resolveTo,
           method: opts.method,
           referer: opts.referer,
           ua: opts.ua,

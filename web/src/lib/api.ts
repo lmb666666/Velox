@@ -109,12 +109,17 @@ export interface TestRequest {
   top?: number;
   sort?: 'latency' | 'loss';
   proxy?: string;
-  checkMode?: 'fast' | 'detail';
+  checkMode?: 'fast' | 'slow';
   method?: string;
   referer?: string;
   cookie?: string;
   redirects?: number;
   httpVersion?: string;
+  /** http 模式：强制解析（IPv4 或域名） */
+  resolveTo?: string;
+  /** http 模式：目标请求 User-Agent */
+  httpUa?: string;
+  /** 目标解析/查询使用的 DNS 服务器（非空 = 指定 DNS） */
   dnsType?: string;
   dnsServer?: string;
 }

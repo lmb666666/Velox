@@ -198,12 +198,16 @@ function parseRequest(body: string): TestRequest {
     top: clamp(raw.top, 1, 50, 5),
     sort: raw.sort === 'loss' ? 'loss' : 'latency',
     proxy: typeof raw.proxy === 'string' && raw.proxy ? raw.proxy : undefined,
-    checkMode: raw.checkMode === 'detail' ? 'detail' : 'fast',
+    checkMode: raw.checkMode === 'slow' ? 'slow' : 'fast',
     method: String(raw.method ?? 'get'),
-    redirects: clamp(raw.redirects, 0, 20, 5),
+    referer: String(raw.referer ?? ''),
+    cookie: String(raw.cookie ?? ''),
+    httpUa: String(raw.httpUa ?? ''),
+    resolveTo: String(raw.resolveTo ?? ''),
+    redirects: clamp(raw.redirects, 0, 10, 5),
     httpVersion: String(raw.httpVersion ?? 'auto'),
     dnsType: String(raw.dnsType ?? 'a'),
-    dnsServer: String(raw.dnsServer ?? ''),
+    dnsServer: String(raw.dnsServer ?? '').trim(),
   };
 }
 
