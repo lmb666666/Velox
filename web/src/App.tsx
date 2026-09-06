@@ -221,7 +221,7 @@ export default function App() {
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6">
-        <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <div className="grid items-start gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
           <div className="space-y-4">
             <TestForm
               running={running}

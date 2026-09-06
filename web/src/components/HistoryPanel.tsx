@@ -87,6 +87,7 @@ export function HistoryPanel({
           <p className="py-4 text-center text-sm text-muted-foreground">暂无历史记录</p>
         ) : (
           <div className="space-y-1.5">
+            <div className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
             {items.map((it) => (
               <div
                 key={it.id}
@@ -127,6 +128,7 @@ export function HistoryPanel({
             {confirmId && (
               <p className="text-center text-[11px] text-muted-foreground">再次点击垃圾桶图标确认删除</p>
             )}
+            </div>
           </div>
         )}
       </CardContent>
