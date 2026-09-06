@@ -34,6 +34,9 @@ let chain: Promise<void> = Promise.resolve();
 const HISTORY_DIR = path.join(os.homedir(), '.cache', 'itdog-cli', 'web-history');
 const HISTORY_LIMIT = 50;
 const MAX_MEMORY_TASKS = 120;
+/** 排队+执行中的任务上限：超出直接拒绝，防止连环提交拖垮队列与内存 */
+const MAX_ACTIVE_TASKS = 16;
+const MAX_BODY_BYTES = 1e6;
 
 /** 完成态任务保留最新 120 条，防止长时间运行内存无限增长 */
 function pruneTasks(): void {
@@ -42,6 +45,12 @@ function pruneTasks(): void {
     .filter((t) => (t.state === 'done' || t.state === 'error') && t.listeners.size === 0)
     .sort((a, b) => a.createdAt - b.createdAt);
   for (const t of finished.slice(0, tasks.size - MAX_MEMORY_TASKS)) tasks.delete(t.id);
+}
+
+function activeTaskCount(): number {
+  let n = 0;
+  for (const t of tasks.values()) if (t.state === 'queued' || t.state === 'running') n++;
+  return n;
 }
 
 function resolveWebDist(): string | null {
@@ -64,9 +73,20 @@ const MIME: Record<string, string> = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 function json(res: ServerResponse, code: number, data: unknown): void {
+  // 头已发出（如 SSE 中途出错）时只尝试截断响应，绝不能再 writeHead —— 否则
+  // 异常会从 .catch 处理器里再抛出，变成 unhandled rejection 直接杀死进程
+  if (res.headersSent) {
+    try {
+      res.end();
+    } catch {
+      /* 连接已断 */
+    }
+    return;
+  }
   const body = JSON.stringify(data);
   res.writeHead(code, {
     'content-type': 'application/json; charset=utf-8',
@@ -168,11 +188,19 @@ function readBody(req: IncomingMessage): Promise<string> {
     let body = '';
     req.on('data', (c) => {
       body += c;
-      if (body.length > 1e6) reject(new Error('body too large'));
+      if (body.length > MAX_BODY_BYTES) {
+        req.destroy(); // 超限立即断开，不再接收剩余上传
+        reject(new Error('请求体过大'));
+      }
     });
     req.on('end', () => resolve(body));
     req.on('error', reject);
   });
+}
+
+/** 目标合法性：可打印 ASCII、无控制字符（会拼进 itdog 的请求 URL 与 WS 握手串） */
+function validTarget(t: string): boolean {
+  return t.length > 0 && t.length <= 200 && /^[\x21-\x7e]+$/.test(t);
 }
 
 function parseRequest(body: string): TestRequest {
@@ -184,6 +212,10 @@ function parseRequest(body: string): TestRequest {
     .map((t) => String(t).trim())
     .filter(Boolean);
   if (targets.length === 0) throw new Error('缺少目标');
+  if (targets.length > 256) throw new Error('目标数量过多（上限 256）');
+  for (const t of targets) {
+    if (!validTarget(t)) throw new Error(`目标不合法（仅支持 ASCII 可打印字符，长度 ≤200）: ${t.slice(0, 40)}`);
+  }
   const clamp = (v: unknown, min: number, max: number, dflt: number) => {
     const n = Number.parseInt(String(v ?? ''), 10);
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt;
@@ -212,7 +244,14 @@ function parseRequest(body: string): TestRequest {
 }
 
 function serveStatic(res: ServerResponse, pathname: string, webDist: string): void {
-  const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
+  let rel: string;
+  try {
+    rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
+  } catch {
+    res.writeHead(400, { 'x-content-type-options': 'nosniff' });
+    res.end('bad request');
+    return;
+  }
   const file = path.join(webDist, rel);
   // 防目录穿越：解析后必须仍在 webDist 内
   if (!path.resolve(file).startsWith(path.resolve(webDist) + path.sep) && path.resolve(file) !== path.resolve(webDist)) {
@@ -269,6 +308,10 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   }
 
   if (pathname === '/api/tests' && req.method === 'POST') {
+    if (activeTaskCount() >= MAX_ACTIVE_TASKS) {
+      json(res, 429, { error: `排队任务过多（上限 ${MAX_ACTIVE_TASKS}），请等待当前任务完成` });
+      return true;
+    }
     let reqTest: TestRequest;
     try {
       reqTest = parseRequest(await readBody(req));
