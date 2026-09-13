@@ -1,15 +1,24 @@
 name: Release
 
-# 推送 v* 标签时自动构建多平台可执行文件并发布 GitHub Release；
-# 也可在 Actions 页面手动触发（仅构建产物，不发 Release）。
+# 自动构建并发布 Release：
+#  - 推送 v* 标签：始终构建并发布（用于手动发版/重发）
+#  - 推送 main：自动构建；若 package.json 的版本号尚无对应 Release 则自动创建发布
+#    （版本号去重—— bump 版本后推送即发版，无需手动打标签）
+#  - workflow_dispatch：Actions 页手动触发，仅构建上传产物
+# 每个版本均包含三端（Windows / Linux / macOS）可执行文件。
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -42,15 +51,40 @@ jobs:
       - name: 打包多平台可执行文件
         run: node scripts/build-exe.mjs
 
+      - name: 计算版本号与发布条件
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+            TAG="$GITHUB_REF_NAME"
+            PUBLISH=true   # 标签推送：始终发布
+          else
+            VER=$(node -p "require('./package.json').version")
+            TAG="v$VER"
+            if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              PUBLISH=false  # 该版本已发布过：主分支推送只做构建校验，不重复覆盖
+            else
+              PUBLISH=true   # 新版本：自动发布
+            fi
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "版本 $VER（$TAG）→ publish=$PUBLISH"
+
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundles
+          name: release-bundles-${{ steps.meta.outputs.version }}
           path: build/release/*.tar.gz
 
       - name: 发布 GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.meta.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
           files: build/release/*.tar.gz
           generate_release_notes: true
