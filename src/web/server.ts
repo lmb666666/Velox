@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -558,7 +558,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   return true;
 }
 
-export function startWebServer(port = 8818, host = '127.0.0.1'): void {
+export function startWebServer(port = 8818, host = '127.0.0.1'): Server {
   // pkg 单文件：前端从内存服务（HAS_EMBEDDED_ASSETS），无需文件系统定位
   const webDist = isPkgRuntime() ? null : resolveWebDist();
   const server = createServer((req, res) => {
@@ -589,6 +589,7 @@ export function startWebServer(port = 8818, host = '127.0.0.1'): void {
     console.log(`  ➜  节点表：${allNodes().length} 个监测点${webDist || HAS_EMBEDDED_ASSETS ? '' : '（前端未构建：pnpm web:build）'}`);
     console.log('');
   });
+  return server;
 }
 
 if (process.argv[1] && path.join(selfDir(), 'server.js') === path.resolve(process.argv[1])) {
