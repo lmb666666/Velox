@@ -11,8 +11,12 @@ const KNOWN_MODES = ['ping', 'tcping', 'http', 'dns', 'traceroute', 'batch-ping'
 
 async function refreshNodes(ua: string): Promise<void> {
   const { updated, counts } = await refreshNodesFromSite(ua);
-  if (updated > 0) console.error(`节点表已刷新：${Object.values(counts).join('/')}（缓存于 ~/.cache/itdog-cli/nodes.json）`);
-  else console.error('节点表刷新失败：页面未包含节点数据');
+  if (updated > 0) {
+    const breakdown = Object.entries(counts)
+      .map(([cat, n]) => `${cat.replace(/^中国/, '')} ${n}`)
+      .join(' / ');
+    console.error(`节点表已刷新：${breakdown}（缓存于 ~/.cache/itdog-cli/nodes.json）`);
+  } else console.error('节点表刷新失败：页面未包含节点数据');
 }
 
 async function runWithCliOutput(mode: Mode, targets: string[], opts: Record<string, unknown>): Promise<void> {
@@ -35,6 +39,7 @@ async function runWithCliOutput(mode: Mode, targets: string[], opts: Record<stri
     idleTimeoutSec: Number.parseInt(String(opts.idleTimeout ?? '12'), 10) || 12,
     top: Number.parseInt(String(opts.top ?? '5'), 10) || 5,
     sort: opts.sort === 'loss' ? 'loss' : 'latency',
+    provider: opts.provider as string | undefined,
     ua,
     proxy: opts.proxy as string | undefined,
     retry: Number.parseInt(String(opts.retry ?? '2'), 10) || 0,
@@ -74,7 +79,13 @@ async function runWithCliOutput(mode: Mode, targets: string[], opts: Record<stri
   }
   console.log(renderSummary(summary, result.finished));
   if (!result.finished) {
-    console.log(`提示: 未收到 finished（${result.reason}），以上为已收到的部分结果`);
+    const reasonLabels: Record<string, string> = {
+      closed: '连接关闭',
+      'overall-timeout': '整体超时',
+      'idle-timeout': '空闲超时',
+      error: '连接异常',
+    };
+    console.log(`提示: 未收到 finished（${reasonLabels[result.reason] ?? result.reason}），以上为已收到的部分结果`);
   }
 
   if (opts.json) {
@@ -140,6 +151,7 @@ function addCommon(cmd: Command): Command {
     .option('--csv <file>', '逐节点结果导出为 CSV')
     .option('--proxy <url>', 'HTTP(S) 代理（任务创建与 WS 均走此代理）')
     .option('--retry <n>', '任务创建失败重试次数', '2')
+    .option('--provider <name>', '测速上游: auto(默认) | itdog', 'auto')
     .option('--ua <ua>', '自定义 User-Agent')
     .option('--refresh-nodes', '先从 batch_ping 页面刷新节点表缓存', false)
     .option('--quiet', '只输出最终汇总，不逐帧打印');
@@ -157,7 +169,7 @@ program
   .command('serve')
   .description('启动 Velox Web 控制台')
   .option('--port <port>', '监听端口', '8818')
-  .option('--host <host>', '监听地址', '0.0.0.0')
+  .option('--host <host>', '监听地址（Docker 等容器场景用 0.0.0.0 对外暴露）', '127.0.0.1')
   .action(async (opts) => {
     const { startWebServer } = await import('./web/server.js');
     startWebServer(Number.parseInt(opts.port, 10) || 8818, opts.host);

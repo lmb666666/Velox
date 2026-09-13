@@ -94,11 +94,22 @@ export function buildSummary(
   const byNode = new Map<string, NodeStat>();
   for (const f of frames) {
     const stat = normalizeFrame(f, mode);
-    // 批量模式多目标：同一节点会对每个目标各发一帧，按 节点+目标IP 分组
+    // 批量模式多目标：同一节点会对每个目标各发一帧，按 节点+响应IP 分组。
+    // 局限：两个目标解析到同一 IP（或都解析失败 ip 为空）时会被合并为一行（帧本身不带目标字段）。
     const key = mode.startsWith('batch') ? `${stat.nodeId}|${stat.ip}` : stat.nodeId;
     if (key) byNode.set(key, stat); // 同节点多帧时取最后一帧
   }
-  const stats = [...byNode.values()];
+  return summarizeStats(mode, targets, [...byNode.values()], topN, sortBy);
+}
+
+/** 统计聚合（normalize 之后的通用部分）：各 provider 共用，避免三份重复实现 */
+export function summarizeStats(
+  mode: Mode,
+  targets: string[],
+  stats: NodeStat[],
+  topN: number,
+  sortBy: 'latency' | 'loss',
+): TestSummary {
   const ok = stats.filter((s) => s.ok && s.latencyMs !== undefined);
   const failed = stats.filter((s) => !s.ok);
 

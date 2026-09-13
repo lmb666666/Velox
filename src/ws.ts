@@ -19,6 +19,8 @@ export interface StreamOptions {
   overallTimeoutMs: number;
   idleTimeoutMs: number;
   proxy?: string;
+  /** 取消信号：中止后立即断开连接并停止重连（Web 端「停止测试」用） */
+  signal?: AbortSignal;
   onFrame: (frame: Frame) => void;
 }
 
@@ -58,6 +60,10 @@ export async function streamTask(opts: StreamOptions): Promise<StreamResult> {
 
   for (let attempt = 0; attempt <= MAX_RECONNECTS; attempt++) {
     if (attempt > 0) await sleep(RECONNECT_DELAY_MS);
+    if (opts.signal?.aborted) {
+      reason = 'closed';
+      break;
+    }
     const remaining = deadline - Date.now();
     if (finished || remaining <= 2000) {
       reason = finished ? 'finished' : frames.length > 0 ? 'closed' : 'overall-timeout';
@@ -73,19 +79,34 @@ export async function streamTask(opts: StreamOptions): Promise<StreamResult> {
       reason = 'closed';
       break;
     }
+    if (r === 'timed-out') {
+      // 整体超时被掐断（可能已收到部分帧），保留超时语义
+      reason = 'overall-timeout';
+      break;
+    }
     // 零帧结束（403/静默/关闭）：退避后重连
     reason = 'error';
   }
 
   return { reason, frames };
 
-  function connectOnce(budgetMs: number): Promise<'has-frames' | 'no-frames'> {
+  function connectOnce(budgetMs: number): Promise<'has-frames' | 'no-frames' | 'timed-out'> {
     return new Promise((resolve) => {
       const ws = new WebSocket(url, wsOptions);
       let resends = 0;
+      let overallTimedOut = false;
+
+      const settle = () => {
+        // 整体超时一律标记 timed-out（无论是否收到过帧），外层统一记为 overall-timeout
+        if (overallTimedOut) {
+          resolve('timed-out');
+        } else {
+          resolve(frames.length > 0 || finished ? 'has-frames' : 'no-frames');
+        }
+      };
 
       const overallTimer = setTimeout(() => {
-        reason = 'overall-timeout';
+        overallTimedOut = true;
         ws.terminate();
       }, budgetMs);
 
@@ -115,6 +136,11 @@ export async function streamTask(opts: StreamOptions): Promise<StreamResult> {
       ws.on('message', (data) => {
         clearTimeout(idleTimer);
         idleTimer = armIdle();
+        if (opts.signal?.aborted) {
+          // 取消必须硬断：ws.close() 要等对端回 close 帧，itdog 不回时连接会挂很久
+          ws.terminate();
+          return;
+        }
         let msg: Frame;
         try {
           msg = JSON.parse(data.toString()) as Frame;
@@ -139,7 +165,7 @@ export async function streamTask(opts: StreamOptions): Promise<StreamResult> {
       ws.on('close', () => {
         clearTimeout(overallTimer);
         clearTimeout(idleTimer);
-        resolve(frames.length > 0 || finished ? 'has-frames' : 'no-frames');
+        settle();
       });
     });
   }

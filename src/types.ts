@@ -88,6 +88,10 @@ export interface TestSummary {
   carriers: CarrierSummary[];
   top: NodeStat[];
   stats: NodeStat[];
+  /** 用户精确选择的节点数（走批量端点精确执行时填入） */
+  requestedNodes?: number;
+  /** 精确选择不可用时的降级目标描述（如「电信、联通线路」） */
+  degradedTo?: string;
 }
 
 export interface RunResult {
@@ -95,4 +99,6 @@ export interface RunResult {
   frames: Frame[];
   finished: boolean;
   reason: string;
+  /** 结果来自哪个上游（当前内置 itdog，预留多上游扩展） */
+  provider?: string;
 }

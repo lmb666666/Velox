@@ -8,6 +8,8 @@ import { runTest, type TestRequest } from '../service.js';
 import type { Frame, Mode, RunResult } from '../types.js';
 import { allNodes, refreshNodesFromSite } from '../nodes.js';
 import { DEFAULT_UA } from '../config.js';
+import { listProviders, isProviderAvailable, getProvider } from '../providers/index.js';
+import type { NodeInfo } from '../types.js';
 
 /**
  * Velox Web 控制台后端：node:http 零框架。
@@ -19,7 +21,7 @@ const MODES: Mode[] = ['ping', 'tcping', 'http', 'dns', 'traceroute', 'batch-pin
 interface TaskEntry {
   id: string;
   req: TestRequest;
-  state: 'queued' | 'running' | 'done' | 'error';
+  state: 'queued' | 'running' | 'done' | 'error' | 'cancelled';
   createdAt: number;
   startedAt?: number;
   finishedAt?: number;
@@ -27,6 +29,9 @@ interface TaskEntry {
   result?: RunResult;
   error?: string;
   listeners: Set<ServerResponse>;
+  /** 取消标记 + 中止源（DELETE /api/tests/:id） */
+  cancelled?: boolean;
+  abort?: AbortController;
 }
 
 const tasks = new Map<string, TaskEntry>();
@@ -38,11 +43,27 @@ const MAX_MEMORY_TASKS = 120;
 const MAX_ACTIVE_TASKS = 16;
 const MAX_BODY_BYTES = 1e6;
 
+/** API-KEY 鉴权：设置 VELOX_API_KEY 后，写操作（创建任务/删历史）需携带 Bearer token 或 x-api-key。
+ *  GET 读操作（health/nodes/meta/查询）不强制鉴权，保持 Web 控制台本地友好。 */
+function apiKeyConfigured(): boolean {
+  return Boolean(process.env.VELOX_API_KEY);
+}
+
+function authorized(req: IncomingMessage): boolean {
+  const key = process.env.VELOX_API_KEY;
+  if (!key) return true; // 未设置 API-KEY 时不鉴权
+  const header = req.headers.authorization ?? req.headers['x-api-key'];
+  const token = Array.isArray(header) ? header[0] : String(header ?? '');
+  // 支持 "Bearer <key>" 或裸 key
+  const challenge = token.replace(/^Bearer\s+/i, '').trim();
+  return challenge === key;
+}
+
 /** 完成态任务保留最新 120 条，防止长时间运行内存无限增长 */
 function pruneTasks(): void {
   if (tasks.size <= MAX_MEMORY_TASKS) return;
   const finished = [...tasks.values()]
-    .filter((t) => (t.state === 'done' || t.state === 'error') && t.listeners.size === 0)
+    .filter((t) => (t.state === 'done' || t.state === 'error' || t.state === 'cancelled') && t.listeners.size === 0)
     .sort((a, b) => a.createdAt - b.createdAt);
   for (const t of finished.slice(0, tasks.size - MAX_MEMORY_TASKS)) tasks.delete(t.id);
 }
@@ -88,12 +109,16 @@ function json(res: ServerResponse, code: number, data: unknown): void {
     return;
   }
   const body = JSON.stringify(data);
-  res.writeHead(code, {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-    'x-content-type-options': 'nosniff',
-  });
-  res.end(body);
+  try {
+    res.writeHead(code, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    });
+    res.end(body);
+  } catch {
+    /* 客户端已断开（如 body 超限被 destroy），写入失败忽略 */
+  }
 }
 
 function broadcast(entry: TaskEntry, event: string, data: unknown): void {
@@ -137,17 +162,29 @@ function enqueue(entry: TaskEntry): void {
 }
 
 async function execute(entry: TaskEntry): Promise<void> {
+  // 排队期间被取消：直接标记取消态，不执行
+  if (entry.cancelled) {
+    entry.state = 'cancelled';
+    entry.error = '任务已取消';
+    entry.finishedAt = Date.now();
+    broadcast(entry, 'state', { state: 'cancelled' });
+    pruneTasks();
+    return;
+  }
   entry.state = 'running';
   entry.startedAt = Date.now();
   broadcast(entry, 'state', { state: 'running' });
   try {
     const result = await runTest(entry.req, {
+      signal: entry.abort?.signal,
       onStatus: (line) => broadcast(entry, 'status', { line }),
       onFrame: (frame) => {
         entry.frames.push(frame); // 快照可回放（重连 SSE / 事后查询不丢帧）
         broadcast(entry, 'frame', { frame, index: entry.frames.length });
       },
     });
+    // 双保险：即使 provider 忽略了中止信号优雅返回，取消的任务也不能落成 done
+    if (entry.cancelled) throw new Error('任务已取消');
     entry.result = result;
     entry.state = 'done';
     entry.finishedAt = Date.now();
@@ -156,14 +193,16 @@ async function execute(entry: TaskEntry): Promise<void> {
       finished: result.finished,
       reason: result.reason,
       frames: result.frames,
+      provider: result.provider,
     });
   } catch (e) {
-    entry.state = 'error';
-    entry.error = (e as Error).message;
+    entry.error = entry.cancelled ? '任务已取消' : (e as Error).message;
+    entry.state = entry.cancelled ? 'cancelled' : 'error';
     entry.finishedAt = Date.now();
     broadcast(entry, 'error', { message: entry.error });
   }
-  saveHistory(entry);
+  // 取消的任务不写历史（无结果可回看）
+  if (entry.state !== 'cancelled') saveHistory(entry);
   broadcast(entry, 'state', { state: entry.state });
   pruneTasks();
 }
@@ -180,6 +219,7 @@ function snapshot(entry: TaskEntry) {
     finished: entry.result?.finished,
     reason: entry.result?.reason,
     error: entry.error,
+    provider: entry.result?.provider,
   };
 }
 
@@ -220,14 +260,27 @@ function parseRequest(body: string): TestRequest {
     const n = Number.parseInt(String(v ?? ''), 10);
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt;
   };
+  const provider = String(raw.provider ?? 'auto').trim() || 'auto';
+  if (provider !== 'auto' && !isProviderAvailable(provider)) {
+    throw new Error(`测速上游 "${provider}" 不可用（当前仅内置 itdog）`);
+  }
+  // 模式能力在提交时校验，避免无效任务占用串行队列后才在 SSE 里报错
+  if (provider !== 'auto') {
+    const p = getProvider(provider);
+    if (p && !p.supportedModes.includes(mode)) {
+      throw new Error(`上游 "${p.id}" 不支持 ${mode} 模式（支持：${p.supportedModes.join(' / ')}）`);
+    }
+  }
   return {
     mode,
     targets,
     nodes: String(raw.nodes ?? 'all').trim() || 'all',
+    provider,
     port: clamp(raw.port, 1, 65535, 443),
     timeoutSec: clamp(raw.timeoutSec, 15, 600, 90),
     idleTimeoutSec: clamp(raw.idleTimeoutSec, 5, 120, 12),
     top: clamp(raw.top, 1, 50, 5),
+    retry: clamp(raw.retry, 0, 10, 2),
     sort: raw.sort === 'loss' ? 'loss' : 'latency',
     proxy: typeof raw.proxy === 'string' && raw.proxy ? raw.proxy : undefined,
     checkMode: raw.checkMode === 'slow' ? 'slow' : 'fast',
@@ -288,12 +341,34 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
     return true;
   }
 
+  if (pathname === '/api/meta/providers' && req.method === 'GET') {
+    json(res, 200, {
+      providers: listProviders(),
+      default: 'auto',
+      auth: apiKeyConfigured() ? 'enabled' : 'disabled',
+    });
+    return true;
+  }
+
   if (pathname === '/api/nodes' && req.method === 'GET') {
-    const byCat: Record<string, { id: string; name: string }[]> = {};
-    for (const n of allNodes()) {
-      (byCat[n.category] ??= []).push({ id: n.id, name: n.name });
+    // ?provider= 指定上游（当前仅 itdog）；auto 按 itdog 处理
+    const qProvider = String(new URL(req.url ?? '/', 'http://x').searchParams.get('provider') ?? 'itdog');
+    const providerId = qProvider === 'auto' ? 'itdog' : qProvider;
+    const provider = getProvider(providerId);
+    // 未启用/不存在的上游明确报错
+    if (!provider) {
+      json(res, 404, { error: `测速上游 "${providerId}" 未启用或不存在（当前仅内置 itdog）` });
+      return true;
     }
-    json(res, 200, { total: allNodes().length, categories: byCat });
+    const usedProvider = provider.id;
+    // 多上游恢复时在此按 provider 预拉其节点表；当前仅 itdog，
+    // 节点表随每次任务创建从页面 HTML 自动更新（client.ts updateFromHtml）
+    const nodes: NodeInfo[] = provider.getNodes();
+    const byCat: Record<string, { id: string; name: string; provider: string }[]> = {};
+    for (const n of nodes) {
+      (byCat[n.category] ??= []).push({ id: n.id, name: n.name, provider: usedProvider });
+    }
+    json(res, 200, { total: nodes.length, categories: byCat, provider: usedProvider });
     return true;
   }
 
@@ -308,6 +383,10 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   }
 
   if (pathname === '/api/tests' && req.method === 'POST') {
+    if (!authorized(req)) {
+      json(res, 401, { error: '未授权：需携带 API-KEY（Authorization: Bearer <key>）' });
+      return true;
+    }
     if (activeTaskCount() >= MAX_ACTIVE_TASKS) {
       json(res, 429, { error: `排队任务过多（上限 ${MAX_ACTIVE_TASKS}），请等待当前任务完成` });
       return true;
@@ -327,6 +406,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
       createdAt: Date.now(),
       frames: [],
       listeners: new Set(),
+      abort: new AbortController(),
     };
     tasks.set(id, entry);
     enqueue(entry);
@@ -339,6 +419,19 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
     const entry = tasks.get(testMatch[1]);
     if (!entry) {
       json(res, 404, { error: '任务不存在' });
+      return true;
+    }
+    // 取消任务：排队中的直接标记；执行中的通过 AbortSignal 中止 provider 流
+    if (req.method === 'DELETE') {
+      if (!authorized(req)) {
+        json(res, 401, { error: '未授权：需携带 API-KEY（Authorization: Bearer <key>）' });
+        return true;
+      }
+      if (entry.state === 'queued' || entry.state === 'running') {
+        entry.cancelled = true;
+        entry.abort?.abort();
+      }
+      json(res, 200, { ok: true, state: entry.state });
       return true;
     }
     if (testMatch[2] === '/events' && req.method === 'GET') {
@@ -380,6 +473,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
           okNodes: raw.result?.summary?.okNodes,
           totalNodes: raw.result?.summary?.totalNodes,
           overallAvg: raw.result?.summary?.overallAvg,
+          provider: raw.result?.provider,
           error: raw.error,
         };
       }).sort((a, b) => b.createdAt - a.createdAt);
@@ -391,6 +485,10 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   }
 
   if (pathname === '/api/history' && req.method === 'DELETE') {
+    if (!authorized(req)) {
+      json(res, 401, { error: '未授权：需携带 API-KEY（Authorization: Bearer <key>）' });
+      return true;
+    }
     try {
       for (const f of fs.readdirSync(HISTORY_DIR)) fs.rmSync(path.join(HISTORY_DIR, f));
       json(res, 200, { ok: true });
@@ -404,6 +502,10 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   if (histMatch && (req.method === 'GET' || req.method === 'DELETE')) {
     const file = path.join(HISTORY_DIR, `${histMatch[1]}.json`);
     if (req.method === 'DELETE') {
+      if (!authorized(req)) {
+        json(res, 401, { error: '未授权：需携带 API-KEY（Authorization: Bearer <key>）' });
+        return true;
+      }
       try {
         fs.rmSync(file);
         json(res, 200, { ok: true });
@@ -421,6 +523,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
         frames: raw.result?.frames ?? [],
         finished: raw.result?.finished ?? false,
         reason: raw.result?.reason ?? '',
+        provider: raw.result?.provider,
       });
     } catch {
       json(res, 404, { error: '记录不存在' });
@@ -432,7 +535,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
   return true;
 }
 
-export function startWebServer(port = 8818, host = '0.0.0.0'): void {
+export function startWebServer(port = 8818, host = '127.0.0.1'): void {
   const webDist = resolveWebDist();
   const server = createServer((req, res) => {
     const pathname = new URL(req.url ?? '/', 'http://x').pathname;

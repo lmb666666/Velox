@@ -56,7 +56,11 @@ function registryLoad(): Registry {
 
 export function allNodes(): NodeInfo[] {
   const reg = registryLoad();
-  return Object.values(reg).flat();
+  // 兜底注入：旧版静态快照的节点对象缺 category（分组键在外层），
+  // 展平时从分组键补齐，保证下游（选择器/降级提示/批量回填）拿到完整分类
+  return Object.entries(reg).flatMap(([cat, list]) =>
+    list.map((n) => (n.category ? n : { ...n, category: cat })),
+  );
 }
 
 export function categories(): string[] {
@@ -131,16 +135,17 @@ export function selectNodes(spec: string | undefined): NodeInfo[] {
   return [...picked.values()];
 }
 
-/** 节点选择器 → 单目标模式的 line 表单值（1电信 2联通 3移动 5境外；空=全部） */
+/** 节点选择器 → 单目标模式的 line 表单值（1电信 2联通 3移动 5境外；空=全部）。
+ *  同时接受数字编码——downgradeNotice 降级时产出的就是编码，必须能原样解析回来。 */
 export function specToLineValues(spec: string | undefined): string {
   const s = (spec ?? 'all').trim();
   if (s === '' || s.toLowerCase() === 'all' || s === '全部') return '';
   const codes: number[] = [];
   for (const part of s.split(',').map((x) => x.trim().toLowerCase())) {
-    if (part === 'telecom' || part === '电信') codes.push(1);
-    else if (part === 'unicom' || part === '联通') codes.push(2);
-    else if (part === 'mobile' || part === '移动') codes.push(3);
-    else if (part === 'overseas' || part === '海外' || part === '境外') codes.push(5);
+    if (part === 'telecom' || part === '电信' || part === '1') codes.push(1);
+    else if (part === 'unicom' || part === '联通' || part === '2') codes.push(2);
+    else if (part === 'mobile' || part === '移动' || part === '3') codes.push(3);
+    else if (part === 'overseas' || part === '海外' || part === '境外' || part === '5') codes.push(5);
   }
   return [...new Set(codes)].sort().join(',');
 }
