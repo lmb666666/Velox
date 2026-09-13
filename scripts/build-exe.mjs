@@ -12,7 +12,7 @@
  */
 import { build } from 'esbuild';
 import { exec as pkgExec } from '@yao-pkg/pkg';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,38 @@ if (targets.length === 0) {
 
 const log = (m) => console.log(`[build-exe] ${m}`);
 
+// ── 0. 收集需要内嵌的资源 ──
+// web/dist/** → base64（前端从内存服务，绕开 pkg 快照 fs 在 Windows 上的不可靠拦截）
+// assets/nodes.json + assets/guard-auto.js → utf8（节点表/WAF 快照兜底）
+function collectDir(dir, prefix = '') {
+  const out = {};
+  for (const f of readdirSync(dir)) {
+    const p = path.join(dir, f);
+    if (statSync(p).isDirectory()) Object.assign(out, collectDir(p, `${prefix}/${f}`));
+    else out[`${prefix}/${f}`] = readFileSync(p).toString('base64');
+  }
+  return out;
+}
+const webAssets = collectDir(chdir('web/dist'));
+const runtimeFiles = {
+  'nodes.json': readFileSync(chdir('assets/nodes.json'), 'utf8'),
+  'guard-auto.js': readFileSync(chdir('assets/guard-auto.js'), 'utf8'),
+};
+const webAssetsModule =
+  `export const WEB_ASSETS: Record<string, string> = ${JSON.stringify(webAssets)};\n` +
+  `export const RUNTIME_FILES: Record<string, string> = ${JSON.stringify(runtimeFiles)};\n` +
+  `export const HAS_EMBEDDED_ASSETS = true;\n`;
+log(`内嵌资源：web/dist ${Object.keys(webAssets).length} 个文件 + 运行时 ${Object.keys(runtimeFiles).length} 个`);
+
+/** esbuild 虚拟模块：打包时把真实资源内容注入 src/web-assets.ts 的导出 */
+const webAssetsPlugin = {
+  name: 'velox-web-assets',
+  setup(b) {
+    b.onResolve({ filter: /web-assets\.js$/ }, (args) => ({ path: args.path, namespace: 'velox-web-assets' }));
+    b.onLoad({ filter: /.*/, namespace: 'velox-web-assets' }, () => ({ contents: webAssetsModule, loader: 'ts' }));
+  },
+};
+
 // ── 1. esbuild 打包为单文件 CJS（含全部运行时依赖；node 内置模块除外）──
 log('esbuild bundle → build/exe/cli.cjs');
 await build({
@@ -56,6 +88,7 @@ await build({
   // CJS 输出下 import.meta 不可用（undefined）：让 esbuild 降级为 __filename shim，
   // 使 resolveAsset/resolveWebDist 的目录上溯在 pkg 快照路径下语义正确
   supported: { 'import-meta': false },
+  plugins: [webAssetsPlugin],
 });
 
 // ── 2. 逐平台 pkg 出单文件可执行（assets 与 web/dist 内嵌进快照）──
@@ -79,8 +112,7 @@ for (const t of targets) {
     '--no-bytecode',
     '--public',
     '--public-packages', '*',
-    // 内嵌资源在 package.json 的 pkg.assets 中配置（assets/**、web/dist/**），
-    // 快照内路径为 /snapshot/assets 与 /snapshot/web/dist，落在资源解析的上溯范围内
+    // 资源已通过 esbuild 虚拟模块内嵌进 bundle（内存服务），无需 pkg 快照 assets
   ]);
   log(`完成 ${path.basename(out)}（单文件）`);
 }

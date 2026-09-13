@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { NODES_CACHE_FILE } from './config.js';
 import { isPkgRuntime, selfDir } from './self-dir.js';
+import { RUNTIME_FILES } from './web-assets.js';
 import type { NodeInfo } from './types.js';
 
 /** 节点注册表：内置静态表兜底 + 运行时从 itdog 页面 HTML 刷新（缓存到用户目录） */
@@ -11,8 +12,11 @@ type Registry = Record<string, NodeInfo[]>;
 
 let registry: Registry | null = null;
 
-function staticNodesPath(): string {
-  return resolveAsset('nodes.json');
+/** 读取运行时资源：pkg 单文件下优先取内存内嵌（绕开快照 fs 的平台差异），
+ *  否则走文件系统（ITDOG_ASSETS_DIR / exe 同目录 / 上溯查找） */
+export function readRuntimeAsset(name: string): string {
+  if (RUNTIME_FILES[name] !== undefined) return RUNTIME_FILES[name];
+  return fs.readFileSync(resolveAsset(name), 'utf8');
 }
 
 /** 兼容 dist/ 与 tsx 直跑两种布局，向上逐级查找 assets/ 目录；
@@ -45,17 +49,24 @@ function cacheFile(): string {
 
 function registryLoad(): Registry {
   if (registry) return registry;
-  // 优先用较新的本地缓存，其次用随仓库分发的静态表
-  for (const p of [cacheFile(), staticNodesPath()]) {
-    try {
-      const data = JSON.parse(fs.readFileSync(p, 'utf8')) as Registry;
-      if (data && Object.keys(data).length > 0) {
-        registry = data;
-        return registry;
-      }
-    } catch {
-      /* 尝试下一个来源 */
+  // 优先用较新的本地缓存，其次内嵌/随仓库分发的静态表
+  try {
+    const data = JSON.parse(fs.readFileSync(cacheFile(), 'utf8')) as Registry;
+    if (data && Object.keys(data).length > 0) {
+      registry = data;
+      return registry;
     }
+  } catch {
+    /* 缓存不存在或损坏，尝试静态表 */
+  }
+  try {
+    const data = JSON.parse(readRuntimeAsset('nodes.json')) as Registry;
+    if (data && Object.keys(data).length > 0) {
+      registry = data;
+      return registry;
+    }
+  } catch {
+    /* 静态表也不可用 */
   }
   registry = {};
   return registry;

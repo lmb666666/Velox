@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { runTest, type TestRequest } from '../service.js';
 import { isPkgRuntime, selfDir } from '../self-dir.js';
+import { HAS_EMBEDDED_ASSETS, WEB_ASSETS } from '../web-assets.js';
 import type { Frame, Mode, RunResult } from '../types.js';
 import { allNodes, refreshNodesFromSite } from '../nodes.js';
 import { DEFAULT_UA } from '../config.js';
@@ -75,11 +76,6 @@ function activeTaskCount(): number {
 }
 
 function resolveWebDist(): string | null {
-  // pkg 单文件打包模式：exe 同目录的 web/dist（旁挂三件套布局）
-  if (isPkgRuntime()) {
-    const candidate = path.join(path.dirname(process.execPath), 'web', 'dist');
-    if (fs.existsSync(path.join(candidate, 'index.html'))) return candidate;
-  }
   let dir = selfDir();
   for (let i = 0; i < 5; i++) {
     const candidate = path.join(dir, 'web', 'dist');
@@ -300,7 +296,30 @@ function parseRequest(body: string): TestRequest {
   };
 }
 
-function serveStatic(res: ServerResponse, pathname: string, webDist: string): void {
+function serveStatic(res: ServerResponse, pathname: string, webDist: string | null): void {
+  // ① 内嵌资源（pkg 单文件）：内存直读，完全不经文件系统（Windows 快照 fs 不可靠）
+  if (HAS_EMBEDDED_ASSETS) {
+    const rel = pathname === '/' ? '/index.html' : pathname;
+    const b64 = WEB_ASSETS[rel] ?? (rel.slice(1).includes('.') ? undefined : WEB_ASSETS['/index.html']);
+    if (b64 === undefined) {
+      res.writeHead(404, { 'x-content-type-options': 'nosniff' });
+      res.end('not found');
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': MIME[path.extname(rel)] ?? 'application/octet-stream',
+      'cache-control': rel.startsWith('/assets/') ? 'public, max-age=86400' : 'no-cache',
+      'x-content-type-options': 'nosniff',
+    });
+    res.end(Buffer.from(b64, 'base64'));
+    return;
+  }
+  // ② 文件系统（开发 / Docker / 普通部署）
+  if (!webDist) {
+    res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
+    res.end('<h1>Velox</h1><p>前端尚未构建，请先运行：<code>pnpm web:build</code></p>');
+    return;
+  }
   let rel: string;
   try {
     rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
@@ -540,28 +559,34 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, pathname: st
 }
 
 export function startWebServer(port = 8818, host = '127.0.0.1'): void {
-  const webDist = resolveWebDist();
+  // pkg 单文件：前端从内存服务（HAS_EMBEDDED_ASSETS），无需文件系统定位
+  const webDist = isPkgRuntime() ? null : resolveWebDist();
   const server = createServer((req, res) => {
     const pathname = new URL(req.url ?? '/', 'http://x').pathname;
     handleApi(req, res, pathname)
       .then((handled) => {
         if (handled) return;
-        if (!webDist) {
-          res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
-          res.end('<h1>Velox</h1><p>前端尚未构建，请先运行：<code>pnpm web:build</code></p>');
-          return;
-        }
         serveStatic(res, pathname, webDist);
       })
       .catch((e) => {
         json(res, 500, { error: (e as Error).message });
       });
   });
+  // 端口占用等启动错误给出友好提示，而不是抛未捕获异常直接崩掉窗口
+  server.on('error', (e: NodeJS.ErrnoException) => {
+    if (e.code === 'EADDRINUSE') {
+      console.error(`\n  ⚠ 端口 ${port} 已被占用 —— 可能已有一个 Velox 在运行，或端口被其他程序使用`);
+      console.error('    可用 --port 换一个端口，或关闭已有实例后重试\n');
+    } else {
+      console.error(`\n  ⚠ 服务启动失败：${e.message}\n`);
+    }
+    process.exitCode = 1;
+  });
   server.listen(port, host, () => {
     console.log('');
     console.log('  ⚡ Velox —— Web 控制台已启动');
     console.log(`  ➜  http://localhost:${port}`);
-    console.log(`  ➜  节点表：${allNodes().length} 个监测点${webDist ? '' : '（前端未构建：pnpm web:build）'}`);
+    console.log(`  ➜  节点表：${allNodes().length} 个监测点${webDist || HAS_EMBEDDED_ASSETS ? '' : '（前端未构建：pnpm web:build）'}`);
     console.log('');
   });
 }

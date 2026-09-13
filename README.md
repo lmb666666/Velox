@@ -69,7 +69,7 @@ pnpm build:exe                        # 全部平台（Windows x64 / Linux x64+a
 pnpm build:exe node22-win-x64        # 仅指定平台
 ```
 
-产物为**单文件可执行**（`build/release/velox-<版本>-<平台>`，含 Node 运行时、节点表、WAF 快照与控制台前端，无任何外部文件依赖），下载即用。Windows 双击 `velox.exe` 自动启动控制台并打开浏览器（SmartScreen 首次可能提示，点「更多信息 → 仍要运行」）。推送 `v*` 标签或 bump 版本号后推送 main，CI 自动构建并发布 GitHub Release。
+产物为**单文件可执行**（`build/release/velox-<版本>-<平台>`，含 Node 运行时、节点表、WAF 快照与控制台前端，无任何外部文件依赖），下载即用。Windows 双击 `velox.exe`：终端显示服务地址，**按回车打开浏览器**（或输入 n 跳过），关闭窗口即停止服务（SmartScreen 首次可能提示，点「更多信息 → 仍要运行」）。推送 `v*` 标签或 bump 版本号后推送 main，CI 自动构建并发布 GitHub Release。
 
 ## 品牌标识
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import * as readline from 'node:readline';
 import { Command } from 'commander';
 import { runTest, type TestRequest } from './service.js';
 import { allNodes, refreshNodesFromSite } from './nodes.js';
@@ -178,21 +179,29 @@ program
 
 // `itdog 1.2.3.4` 等价于 `itdog ping 1.2.3.4`
 const argv = process.argv.slice(2);
-// pkg 单文件打包（双击启动）：无参数时自动拉起 Web 控制台并打开浏览器。
+// pkg 单文件打包（双击启动）：默认只启动服务并在终端显示地址，由用户决定是否打开浏览器。
 // 注意：pkg 引导器在类 vm 环境执行入口，禁止原生动态 import()（ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING），
 // 全部依赖必须静态导入，由 esbuild bundle 进单文件。
 const isPkg = (process as unknown as { pkg?: unknown }).pkg !== undefined;
 if (isPkg && argv.length === 0) {
   startWebServer(8818, '127.0.0.1');
   const url = 'http://localhost:8818';
-  const open =
-    process.platform === 'win32'
-      ? spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' })
-      : process.platform === 'darwin'
-        ? spawn('open', [url], { detached: true, stdio: 'ignore' })
-        : spawn('xdg-open', [url], { detached: true, stdio: 'ignore' });
-  open.on('error', () => {}); // 无图形环境时忽略
-  open.unref();
+  console.log('  按「回车」在浏览器打开控制台；直接关闭本窗口即停止服务。');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.question('打开浏览器？[Y/n] ', (ans) => {
+    rl.close();
+    if (ans.trim().toLowerCase() !== 'n') {
+      const open =
+        process.platform === 'win32'
+          ? spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' })
+          : process.platform === 'darwin'
+            ? spawn('open', [url], { detached: true, stdio: 'ignore' })
+            : spawn('xdg-open', [url], { detached: true, stdio: 'ignore' });
+      open.on('error', () => {}); // 无图形环境时忽略
+      open.unref();
+    }
+    console.log('服务运行中，关闭本窗口即停止。');
+  });
 } else {
   if (argv.length > 0 && !KNOWN_MODES.includes(argv[0]) && !argv[0].startsWith('-')) {
     argv.unshift('ping');

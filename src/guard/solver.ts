@@ -1,7 +1,7 @@
 import vm from 'node:vm';
 import fs from 'node:fs';
 import { GUARD_XOR_SUFFIX } from '../config.js';
-import { resolveAsset } from '../nodes.js';
+import { readRuntimeAsset, resolveAsset } from '../nodes.js';
 
 /**
  * guard → guardret 求解，双层策略：
@@ -16,21 +16,18 @@ let cachedSource: string | null = null;
 
 function loadGuardJs(): string {
   if (cachedSource !== null) return cachedSource;
-  const candidates: string[] = [];
-  if (process.env.ITDOG_GUARD_JS) candidates.push(process.env.ITDOG_GUARD_JS);
-  candidates.push(resolveAsset('guard-auto.js'));
-  for (const p of candidates) {
+  // 显式指定的文件优先（ITDOG_GUARD_JS 环境变量）
+  if (process.env.ITDOG_GUARD_JS) {
     try {
-      cachedSource = fs.readFileSync(p, 'utf8');
+      cachedSource = fs.readFileSync(process.env.ITDOG_GUARD_JS, 'utf8');
       return cachedSource;
     } catch {
-      /* 尝试下一个候选路径 */
+      /* 回退到内嵌/内置快照 */
     }
   }
-  throw new Error(
-    '找不到 guard-auto.js 快照。请运行 `pnpm refresh-guard` 重新抓取，' +
-      '或用环境变量 ITDOG_GUARD_JS 指定文件路径。',
-  );
+  // pkg 单文件：内存内嵌快照；普通形态：assets/ 目录快照
+  cachedSource = readRuntimeAsset('guard-auto.js');
+  return cachedSource;
 }
 
 function compile(): vm.Script {
