@@ -82,7 +82,7 @@ pnpm build:exe                        # 全部平台（Windows x64 / Linux x64+a
 pnpm build:exe node22-win-x64        # 仅指定平台
 ```
 
-产物为**单文件可执行**（`build/release/velox-<版本>-<平台>`，含 Node 运行时、节点表、WAF 快照与控制台前端，无任何外部文件依赖），下载即用。Windows 双击 `velox.exe` 进入**终端 TUI 主菜单**：默认不启动 Web 服务，可在菜单里启动 Web 控制台（显示地址、按回车打开浏览器），或直接在终端使用 ping/tcping/http/dns/traceroute/批量测速与节点表刷新；关闭窗口即退出（SmartScreen 首次可能提示，点「更多信息 → 仍要运行」）。推送 `v*` 标签或 bump 版本号后推送 main，CI 自动构建并发布 GitHub Release。
+产物为**单文件可执行**（`build/release/velox-<版本>-<平台>`，含 Node 运行时、节点表、WAF 快照与控制台前端，无任何外部文件依赖），下载即用。Windows 双击 `velox.exe` 进入**彩色终端 TUI**：方向键选择功能，默认不启动 Web 服务，可一键启动/停止 Web 控制台，或在终端直接使用 ping/tcping/http/dns/traceroute/批量测速与节点表刷新（测速带实时状态行）；关闭窗口即退出（SmartScreen 首次可能提示，点「更多信息 → 仍要运行」）。推送 `v*` 标签或 bump 版本号后推送 main，CI 自动构建并发布 GitHub Release。
 
 ## 品牌标识
 
