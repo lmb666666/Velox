@@ -7,7 +7,7 @@
  *      —— 旁挂三件套，resolveAsset/resolveWebDist 已支持 exe 同目录查找
  *   4. tar.gz 打包到 build/release/
  *
- * 用法：node scripts/build-exe.mjs [target ...]   # 缺省构建全部 5 个平台
+ * 用法：node scripts/build-exe.mjs [target ...]   # 缺省构建全部平台
  *       node scripts/build-exe.mjs node22-linux-x64
  */
 import { build } from 'esbuild';
@@ -21,13 +21,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chdir = (p) => path.join(root, p);
 const { version } = (await import(chdir('package.json'), { with: { type: 'json' } })).default;
 
-/** 目标平台 → 输出文件名/压缩包名 */
+/** 目标平台 → 输出文件名/压缩包名。
+ *  macOS 暂不下发：未签名产物会被 Gatekeeper 拦截（需 Apple 开发者证书才能根除），
+ *  且缺少真机验证。恢复方法：在数组中加回
+ *    { target: 'node22-macos-x64',   os: 'macos', arch: 'x64',   exe: 'velox' },
+ *    { target: 'node22-macos-arm64', os: 'macos', arch: 'arm64', exe: 'velox' },
+ *  并在 release.yml 恢复 ldid 安装步骤（ad-hoc 签名）。 */
 const TARGETS = [
   { target: 'node22-win-x64', os: 'win', arch: 'x64', exe: 'velox.exe' },
   { target: 'node22-linux-x64', os: 'linux', arch: 'x64', exe: 'velox' },
   { target: 'node22-linux-arm64', os: 'linux', arch: 'arm64', exe: 'velox' },
-  { target: 'node22-macos-x64', os: 'macos', arch: 'x64', exe: 'velox' },
-  { target: 'node22-macos-arm64', os: 'macos', arch: 'arm64', exe: 'velox' },
 ];
 const wanted = process.argv.slice(2);
 const targets = wanted.length > 0 ? TARGETS.filter((t) => wanted.includes(t.target)) : TARGETS;

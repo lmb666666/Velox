@@ -5,7 +5,7 @@ name: Release
 #  - 推送 main：自动构建；若 package.json 的版本号尚无对应 Release 则自动创建发布
 #    （版本号去重—— bump 版本后推送即发版，无需手动打标签）
 #  - workflow_dispatch：Actions 页手动触发，仅构建上传产物
-# 每个版本均包含三端（Windows / Linux / macOS）可执行文件。
+# 每个版本均包含 Windows / Linux（x64+arm64）可执行文件。
 
 on:
   push:
@@ -42,21 +42,6 @@ jobs:
 
       - name: 单元测试
         run: pnpm test
-
-      # pkg 在 Linux 上构建 macOS 产物需 ldid 做 ad-hoc 签名，否则 macOS 会拒绝启动。
-      # 优先系统源；apt 源抖动时回退到 ProcursusTeam 官方静态二进制
-      - name: 安装 macOS 签名工具
-        run: |
-          set -e
-          if (sudo apt-get update -y && sudo apt-get install -y ldid) 2>/dev/null; then
-            echo "ldid 已通过 apt 安装"
-          else
-            echo "apt 安装失败，回退到官方静态二进制"
-            curl -fsSL --retry 3 -o ldid "https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid_linux_x86_64"
-            chmod +x ldid
-            sudo mv ldid /usr/local/bin/ldid
-          fi
-          ldid 2>&1 | head -1 || true
 
       - name: 打包多平台可执行文件
         run: node scripts/build-exe.mjs

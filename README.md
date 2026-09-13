@@ -65,7 +65,7 @@ node dist/cli.js <mode> <目标...> [选项]
 `pnpm build:exe` 将 CLI + Web 控制台打包为单文件可执行程序（含 Node 运行时，目标机器无需安装任何依赖）：
 
 ```bash
-pnpm build:exe                        # 全部 5 个平台（win/linux×2/macos×2）
+pnpm build:exe                        # 全部平台（Windows x64 / Linux x64+arm64）
 pnpm build:exe node22-win-x64        # 仅指定平台
 ```
 
