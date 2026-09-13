@@ -2,6 +2,7 @@ import { BASE_URL, DEFAULT_WSS_URL } from './config.js';
 import { CookieJar } from './cookiejar.js';
 import { solveGuardret } from './guard/solver.js';
 import { updateFromHtml } from './nodes.js';
+import { ProxyAgent } from 'undici';
 
 /** 任务创建层：浏览器头伪装、guard 反爬重试、HTML 解析（task_id/wss_url/错误信息） */
 
@@ -22,15 +23,6 @@ export interface Task {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-let proxyAgentCtor: (new (uri: string) => unknown) | null = null;
-async function getProxyAgent(proxy: string): Promise<unknown> {
-  if (!proxyAgentCtor) {
-    const undici = await import('undici');
-    proxyAgentCtor = undici.ProxyAgent as unknown as new (uri: string) => unknown;
-  }
-  return new proxyAgentCtor(proxy);
-}
-
 async function postForm(
   url: string,
   form: Record<string, string>,
@@ -40,7 +32,8 @@ async function postForm(
   proxy?: string,
 ): Promise<{ status: number; html: string }> {
   const body = new URLSearchParams(form).toString();
-  const dispatcher = proxy ? await getProxyAgent(proxy) : undefined;
+  // npm undici 的 ProxyAgent 与 Node 内置 fetch 按 Dispatcher 接口鸭子类型协作（实测可用）
+  const dispatcher = proxy ? new ProxyAgent(proxy) : undefined;
   const headers: Record<string, unknown> = {
     'content-type': 'application/x-www-form-urlencoded',
     'user-agent': ua,

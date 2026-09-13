@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { runTest, type TestRequest } from '../service.js';
+import { isPkgRuntime, selfDir } from '../self-dir.js';
 import type { Frame, Mode, RunResult } from '../types.js';
 import { allNodes, refreshNodesFromSite } from '../nodes.js';
 import { DEFAULT_UA } from '../config.js';
@@ -75,8 +75,12 @@ function activeTaskCount(): number {
 }
 
 function resolveWebDist(): string | null {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  let dir = here;
+  // pkg 单文件打包模式：exe 同目录的 web/dist（旁挂三件套布局）
+  if (isPkgRuntime()) {
+    const candidate = path.join(path.dirname(process.execPath), 'web', 'dist');
+    if (fs.existsSync(path.join(candidate, 'index.html'))) return candidate;
+  }
+  let dir = selfDir();
   for (let i = 0; i < 5; i++) {
     const candidate = path.join(dir, 'web', 'dist');
     if (fs.existsSync(path.join(candidate, 'index.html'))) return candidate;
@@ -562,6 +566,6 @@ export function startWebServer(port = 8818, host = '127.0.0.1'): void {
   });
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (process.argv[1] && path.join(selfDir(), 'server.js') === path.resolve(process.argv[1])) {
   startWebServer(Number.parseInt(process.env.PORT ?? '8818', 10) || 8818);
 }

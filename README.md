@@ -60,6 +60,17 @@ node dist/cli.js <mode> <目标...> [选项]
 
 完整命令参考与脚本集成示例见 [docs/TUTORIAL.md](docs/TUTORIAL.md)。退出码：0 成功 / 1 全部失败 / 2 协议错误。
 
+## 可执行文件（免 Node 环境）
+
+`pnpm build:exe` 将 CLI + Web 控制台打包为单文件可执行程序（含 Node 运行时，目标机器无需安装任何依赖）：
+
+```bash
+pnpm build:exe                        # 全部 5 个平台（win/linux×2/macos×2）
+pnpm build:exe node22-win-x64        # 仅指定平台
+```
+
+产物在 `build/release/`：`velox-<版本>-<平台>.tar.gz`，内含三件套——`velox(.exe)` 可执行文件 + `assets/`（节点表与 WAF 快照）+ `web/dist/`（控制台前端），解压即用。Windows 双击 `velox.exe` 自动启动控制台并打开浏览器。推送 `v*` 标签时 CI 自动构建并发布 GitHub Release（见 `.github/workflows/release.yml`）。
+
 ## 品牌标识
 
 品牌手册（命名故事、Logo 构造规格、色彩/字体/动效/语气规范）见 [docs/BRAND.md](docs/BRAND.md)，矢量资产位于 `assets/brand/`（logo.svg / logo-mono.svg / favicon.svg / lockup.svg）。

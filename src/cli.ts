@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process';
 import { Command } from 'commander';
 import { runTest, type TestRequest } from './service.js';
 import { allNodes, refreshNodesFromSite } from './nodes.js';
 import { renderSummary, renderTable, toCsv, toFullJson } from './render.js';
 import { DEFAULT_UA } from './config.js';
+import { startWebServer } from './web/server.js';
 import fs from 'node:fs';
 import type { Frame, Mode } from './types.js';
 
@@ -171,13 +173,29 @@ program
   .option('--port <port>', '监听端口', '8818')
   .option('--host <host>', '监听地址（Docker 等容器场景用 0.0.0.0 对外暴露）', '127.0.0.1')
   .action(async (opts) => {
-    const { startWebServer } = await import('./web/server.js');
     startWebServer(Number.parseInt(opts.port, 10) || 8818, opts.host);
   });
 
 // `itdog 1.2.3.4` 等价于 `itdog ping 1.2.3.4`
 const argv = process.argv.slice(2);
-if (argv.length > 0 && !KNOWN_MODES.includes(argv[0]) && !argv[0].startsWith('-')) {
-  argv.unshift('ping');
+// pkg 单文件打包（双击启动）：无参数时自动拉起 Web 控制台并打开浏览器。
+// 注意：pkg 引导器在类 vm 环境执行入口，禁止原生动态 import()（ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING），
+// 全部依赖必须静态导入，由 esbuild bundle 进单文件。
+const isPkg = (process as unknown as { pkg?: unknown }).pkg !== undefined;
+if (isPkg && argv.length === 0) {
+  startWebServer(8818, '127.0.0.1');
+  const url = 'http://localhost:8818';
+  const open =
+    process.platform === 'win32'
+      ? spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' })
+      : process.platform === 'darwin'
+        ? spawn('open', [url], { detached: true, stdio: 'ignore' })
+        : spawn('xdg-open', [url], { detached: true, stdio: 'ignore' });
+  open.on('error', () => {}); // 无图形环境时忽略
+  open.unref();
+} else {
+  if (argv.length > 0 && !KNOWN_MODES.includes(argv[0]) && !argv[0].startsWith('-')) {
+    argv.unshift('ping');
+  }
+  program.parse(argv, { from: 'user' });
 }
-program.parse(argv, { from: 'user' });

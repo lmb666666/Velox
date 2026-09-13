@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import WebSocket from 'ws';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { WS_SALT, BASE_URL } from './config.js';
 import type { Frame } from './types.js';
 
@@ -54,7 +55,6 @@ export async function streamTask(opts: StreamOptions): Promise<StreamResult> {
     headers: { origin: BASE_URL.replace(/\/$/, ''), 'user-agent': ua },
   };
   if (opts.proxy) {
-    const { HttpsProxyAgent } = await import('https-proxy-agent');
     wsOptions = { ...wsOptions, agent: new HttpsProxyAgent(opts.proxy) };
   }
 

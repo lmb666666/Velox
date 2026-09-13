@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { NODES_CACHE_FILE } from './config.js';
+import { isPkgRuntime, selfDir } from './self-dir.js';
 import type { NodeInfo } from './types.js';
 
 /** 节点注册表：内置静态表兜底 + 运行时从 itdog 页面 HTML 刷新（缓存到用户目录） */
@@ -15,21 +15,28 @@ function staticNodesPath(): string {
   return resolveAsset('nodes.json');
 }
 
-/** 兼容 dist/ 与 tsx 直跑两种布局，向上逐级查找 assets/ 目录 */
+/** 兼容 dist/ 与 tsx 直跑两种布局，向上逐级查找 assets/ 目录；
+ *  pkg 单文件打包模式下改为 exe 同目录查找（旁挂三件套布局） */
 export function resolveAsset(name: string): string {
   if (process.env.ITDOG_ASSETS_DIR) return path.resolve(process.env.ITDOG_ASSETS_DIR, name);
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  let dir = here;
+  const candidates: string[] = [];
+  if (isPkgRuntime()) {
+    candidates.push(path.join(path.dirname(process.execPath), 'assets', name));
+  }
+  let dir = selfDir();
   for (let i = 0; i < 4; i++) {
-    const candidate = path.join(dir, 'assets', name);
+    candidates.push(path.join(dir, 'assets', name));
+    dir = path.dirname(dir);
+  }
+  for (const candidate of candidates) {
     try {
       fs.accessSync(candidate);
       return candidate;
     } catch {
-      dir = path.dirname(dir);
+      /* 尝试下一个候选路径 */
     }
   }
-  return path.join(path.dirname(here), 'assets', name);
+  return path.join(selfDir(), '..', 'assets', name);
 }
 
 function cacheFile(): string {
