@@ -3,17 +3,16 @@
  * Velox 单文件可执行打包：
  *   1. esbuild 将 src/cli.ts（含全部运行时依赖）bundle 为单文件 CJS
  *   2. @yao-pkg/pkg 按 target 产出各平台可执行文件（含 Node 运行时，无外部依赖）
- *   3. 组装发布目录：可执行文件 + assets/（节点表/WAF 快照）+ web/dist/（控制台前端）
- *      —— 旁挂三件套，resolveAsset/resolveWebDist 已支持 exe 同目录查找
- *   4. tar.gz 打包到 build/release/
+ *   3. assets/（节点表/WAF 快照）与 web/dist/（控制台前端）通过 --assets 内嵌进
+ *      快照虚拟文件系统（/snapshot/assets、/snapshot/web/dist），resolveAsset/
+ *      resolveWebDist 的目录上溯可直接命中 —— 产物为**单个裸可执行文件**
  *
  * 用法：node scripts/build-exe.mjs [target ...]   # 缺省构建全部平台
  *       node scripts/build-exe.mjs node22-linux-x64
  */
 import { build } from 'esbuild';
 import { exec as pkgExec } from '@yao-pkg/pkg';
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,7 +20,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chdir = (p) => path.join(root, p);
 const { version } = (await import(chdir('package.json'), { with: { type: 'json' } })).default;
 
-/** 目标平台 → 输出文件名/压缩包名。
+/** 目标平台 → 输出文件名。
  *  macOS 暂不下发：未签名产物会被 Gatekeeper 拦截（需 Apple 开发者证书才能根除），
  *  且缺少真机验证。恢复方法：在数组中加回
  *    { target: 'node22-macos-x64',   os: 'macos', arch: 'x64',   exe: 'velox' },
@@ -59,48 +58,31 @@ await build({
   supported: { 'import-meta': false },
 });
 
-// ── 2/3. 逐平台 pkg 出可执行文件并组装发布目录 ──
+// ── 2. 逐平台 pkg 出单文件可执行（assets 与 web/dist 内嵌进快照）──
 const releaseDir = chdir('build/release');
 rmSync(releaseDir, { recursive: true, force: true });
+mkdirSync(releaseDir, { recursive: true });
 
 for (const t of targets) {
-  const name = `velox-${version}-${t.os}-${t.arch}`;
-  const dir = path.join(releaseDir, name);
-  mkdirSync(dir, { recursive: true });
-  log(`pkg ${t.target} → ${name}/`);
+  const ext = t.exe.includes('.') ? t.exe.slice(t.exe.lastIndexOf('.')) : '';
+  const out = path.join(releaseDir, `velox-${version}-${t.os}-${t.arch}${ext}`);
+  log(`pkg ${t.target} → ${path.basename(out)}`);
 
   await pkgExec([
     chdir('build/exe/cli.cjs'),
     '--compress', 'GZip',
     '--target', t.target,
-    '--output', path.join(dir, t.exe),
-    // 个别平台 V8 bytecode 生成可能失败（EPIPE 等）：显式允许回退为纯源码，保证产物可用
-    '--fallback-to-source',
+    '--output', out,
+    // 禁用 V8 bytecode：bytecode 与 V8 版本强耦合，交叉编译时目标端会报
+    // "V8 rejected the bytecode cache"。纯源码内嵌需同时声明全部包为 public
+    // （否则依赖被标记为 bytecode-only，与 --no-bytecode 冲突报 "no source"）
+    '--no-bytecode',
+    '--public',
+    '--public-packages', '*',
+    // 内嵌资源在 package.json 的 pkg.assets 中配置（assets/**、web/dist/**），
+    // 快照内路径为 /snapshot/assets 与 /snapshot/web/dist，落在资源解析的上溯范围内
   ]);
-
-  // 旁挂资源：exe 同目录放 assets/ 与 web/dist/
-  cpSync(chdir('assets'), path.join(dir, 'assets'), { recursive: true });
-  cpSync(chdir('web/dist'), path.join(dir, 'web', 'dist'), { recursive: true });
-  writeFileSync(
-    path.join(dir, 'README.txt'),
-    [
-      `Velox v${version}（${t.os}-${t.arch}）—— 多节点测速与 IP/CDN 优选`,
-      '',
-      `${t.exe} serve                 启动 Web 控制台（Windows 双击 ${t.exe} 默认启动并打开浏览器）`,
-      `${t.exe} ping example.com      CLI 测速（ping/tcping/http/dns/traceroute/batch-*）`,
-      `${t.exe} --help                完整命令参考`,
-      '',
-      '说明：',
-      '- assets/ 与 web/dist/ 需与本文件同目录存放（本包已内置）',
-      '- 节点表缓存与历史写入 ~/.cache/itdog-cli/',
-      '- 非官方接口工具，仅供学习与个人测速，请控制频率',
-    ].join('\n'),
-  );
-
-  // tar.gz（Windows 10+ 自带 bsdtar 可解）
-  const tar = spawnSync('tar', ['-czf', path.join(releaseDir, `${name}.tar.gz`), '-C', releaseDir, name], { stdio: 'inherit' });
-  if (tar.status !== 0) throw new Error(`tar 失败：${name}`);
-  log(`完成 ${name}.tar.gz`);
+  log(`完成 ${path.basename(out)}（单文件）`);
 }
 
-log(`全部完成 → build/release/（${targets.length} 个平台）`);
+log(`全部完成 → build/release/（${targets.length} 个平台，单文件）`);

@@ -74,12 +74,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-bundles-${{ steps.meta.outputs.version }}
-          path: build/release/*.tar.gz
+          path: build/release/velox-*
 
       - name: 发布 GitHub Release
         if: steps.meta.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
-          files: build/release/*.tar.gz
+          files: build/release/velox-*
           generate_release_notes: true

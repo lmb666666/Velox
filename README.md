@@ -69,7 +69,7 @@ pnpm build:exe                        # 全部平台（Windows x64 / Linux x64+a
 pnpm build:exe node22-win-x64        # 仅指定平台
 ```
 
-产物在 `build/release/`：`velox-<版本>-<平台>.tar.gz`，内含三件套——`velox(.exe)` 可执行文件 + `assets/`（节点表与 WAF 快照）+ `web/dist/`（控制台前端），解压即用。Windows 双击 `velox.exe` 自动启动控制台并打开浏览器。推送 `v*` 标签时 CI 自动构建并发布 GitHub Release（见 `.github/workflows/release.yml`）。
+产物为**单文件可执行**（`build/release/velox-<版本>-<平台>`，含 Node 运行时、节点表、WAF 快照与控制台前端，无任何外部文件依赖），下载即用。Windows 双击 `velox.exe` 自动启动控制台并打开浏览器（SmartScreen 首次可能提示，点「更多信息 → 仍要运行」）。推送 `v*` 标签或 bump 版本号后推送 main，CI 自动构建并发布 GitHub Release。
 
 ## 品牌标识
 
