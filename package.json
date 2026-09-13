@@ -2,10 +2,11 @@
   "name": "velox",
   "version": "0.2.0",
   "private": true,
-  "description": "Pulse 脉测 —— 全国监测节点测速与 IP/CDN 优选平台（ping/tcping/http/dns/traceroute，支持批量）",
+  "description": "Velox —— 调用 itdog.cn 全国监测节点测速（ping/tcping/http/dns/traceroute，支持批量与精确节点），预留多上游扩展",
   "type": "module",
+  "packageManager": "pnpm@11.18.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=18.14"
   },
   "bin": {
     "velox": "dist/cli.js",
@@ -21,7 +22,12 @@
     "extract-strings": "node scripts/extract-strings.mjs",
     "fetch-china-geo": "node scripts/fetch-china-geo.mjs",
     "check:web": "tsc -p web --noEmit",
-    "layout-check": "node scripts/layout-check.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "layout-check": "node scripts/layout-check.mjs",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -59,6 +65,7 @@
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   }
 }

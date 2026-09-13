@@ -7,14 +7,14 @@
 <p align="center">
   <img src="https://img.shields.io/badge/node-%E2%89%A518-22D3EE" alt="node >= 18" />
   <img src="https://img.shields.io/badge/License-MIT-22D3EE" alt="MIT License" />
-  <img src="https://img.shields.io/badge/%E7%9B%91%E6%B5%8B%E7%82%B9-290%2B-38BDF8" alt="290+ 监测点" />
+  <img src="https://img.shields.io/badge/%E4%B8%8A%E6%B8%B8-itdog-38BDF8" alt="测速上游 itdog" />
 </p>
 
 **Velox** —— 全国监测节点测速与 IP/CDN 优选平台。
 
 <p align="center">
   <img src="docs/images/screenshot-idle-light.png" width="820" alt="Velox Web 控制台" />
-</p>输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。提供 **CLI** 与 **Web 控制台** 两种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，为后续 Cloudflare/多 CDN 自动优选预留架构。
+</p>输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。架构为 **provider 统一调度**：上游实现统一接口后注册即可被调度（当前内置 itdog，预留多上游扩展与故障自动切换）。提供 **CLI** 与 **Web 控制台** 两种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，为后续 Cloudflare/多 CDN 自动优选预留架构。
 
 > 非官方接口工具，仅供个人测速学习使用；请控制频率，勿用于压测或批量抓取。
 > **Inspect. Select. Accelerate.** —— 测速发现问题，优选解决问题。
@@ -28,7 +28,7 @@ pnpm build && pnpm web:build
 # Web 控制台（推荐）：浏览器打开 http://localhost:8818
 pnpm serve
 
-# 命令行（pulse 或 itdog 均可）
+# 命令行（velox 或 itdog 均可）
 node dist/cli.js ping www.baidu.com
 node dist/cli.js batch-ping 1.1.1.1 8.8.8.8 --nodes '北京,上海'
 ```
@@ -38,10 +38,11 @@ node dist/cli.js batch-ping 1.1.1.1 8.8.8.8 --nodes '北京,上海'
 `pnpm serve` 后浏览器访问 `http://localhost:8818`：
 
 - 7 种模式图形化配置，节点快捷预设 + 逐节点多选弹窗
-- SSE 帧级实时结果流（波形 Logo 加载动效、数据行滑入过渡）
-- 汇总指标卡、分线路条形图、最快 TopN、JSON/CSV 一键下载
+- 结果与历史标注来源上游，任务可随时取消
+- SSE 帧级实时结果流（波形 Logo 加载动效、数据行滑入过渡），任务可随时取消
+- 汇总指标卡、省份分布地图（懒加载）、分线路条形图、最快 TopN、JSON/CSV/Hosts 一键下载
 - 历史记录（最近 50 次）回看、深浅色主题切换、响应式布局
-- 基于 React 18 + Vite + Tailwind + shadcn/ui 组件体系 + framer-motion
+- 基于 React 19 + Vite + Tailwind + shadcn/ui 组件体系 + framer-motion
 
 详见 [docs/WEB.md](docs/WEB.md)。
 
@@ -52,6 +53,7 @@ node dist/cli.js <mode> <目标...> [选项]
   mode: ping（默认）| tcping | http | dns | traceroute | batch-ping | batch-tcping
 
   --nodes all|telecom|unicom|mobile|overseas|<关键词>|<节点ID>
+  --provider auto|itdog                # 上游：auto(默认) 或手动指定
   --port 443 --timeout 90 --top 5 --sort latency|loss
   --json FILE --csv FILE --proxy URL --quiet --refresh-nodes
 ```
@@ -76,6 +78,7 @@ src/
 ├── aggregate.ts    # 帧归一化与聚合（运营商/省份/大区）
 ├── render.ts       # 终端表格、汇总、JSON/CSV
 ├── guard/solver.ts # guardret 求解（vm 沙箱 + 公式兜底）
+├── providers/      # 上游抽象：统一接口 + 注册表（当前内置 itdog，预留多上游扩展）
 web/                # Web 前端（React + Vite + Tailwind + shadcn/ui）
 assets/
 ├── brand/          # 品牌 SVG 资产

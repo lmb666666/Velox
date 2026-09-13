@@ -1,6 +1,6 @@
-# itdog-cli 完整使用教程
+# Velox 完整使用教程
 
-> 本工具现已升级为 **Velox** 品牌（IP/CDN 网络优选平台），品牌规范见 [docs/BRAND.md](BRAND.md)；除命令行外还提供 Web 控制台，见 [docs/WEB.md](WEB.md)。
+> 本工具品牌为 **Velox**（IP/CDN 网络优选平台），品牌规范见 [docs/BRAND.md](BRAND.md)；除命令行外还提供 Web 控制台，见 [docs/WEB.md](WEB.md)。
 
 本工具在本地命令行直接调用 [itdog.cn](https://www.itdog.cn) 的全国监测节点（290+ 个，覆盖电信/联通/移动/港澳台海外）进行测速：输入 IP 或域名，自动完成「创建测速任务 → 连接 WebSocket 收流 → 汇总输出」全过程，无需打开网页。适合日常网络诊断、CDN/IP 优选、脚本化监控等场景。
 
@@ -27,7 +27,7 @@
 
 ### 1.1 环境要求
 
-- **Node.js ≥ 18**（用了内置 fetch/vm，建议 20+；WSL2/Windows/macOS/Linux 均可）
+- **Node.js ≥ 18.14**（用了内置 fetch/vm，建议 20+；WSL2/Windows/macOS/Linux 均可）
 - **pnpm**（包管理；`npm i -g pnpm` 或 corepack 自带）
 
 检查环境：
@@ -106,7 +106,7 @@ itdog <域名或IP>          # 首个参数不是子命令时，自动按 ping �
 ```bash
 itdog ping www.baidu.com                       # 全部节点
 itdog ping 223.5.5.5 --nodes telecom,unicom    # 只测电信+联通
-itdog ping www.baidu.com --nodes 上海 --top 10 # 名称含"上海"的线路，Top10
+itdog ping www.baidu.com --nodes 上海 --top 10 # 名称含"上海"的节点，Top10
 ```
 
 ### 3.2 tcping —— TCP 端口连通性/延迟
@@ -219,17 +219,22 @@ itdog batch-tcping cdn-a.example.com cdn-b.example.com --port 443 --nodes '北�
 |---|---|---|
 | `all`（默认） | 全部 290+ 节点 | `--nodes all` |
 | **线路分组**：`telecom` / `unicom` / `mobile` / `overseas`（或中文 `电信`/`联通`/`移动`/`海外`），可逗号组合 | 按运营商线路选择 | `--nodes telecom,unicom` |
-| **节点 ID**：逗号分隔的随机串 | 精确指定（批量模式生效） | `--nodes 5r3q67qdmmvd0jpb,ojsofw0ovm3ovimf` |
+| **节点 ID**：逗号分隔的随机串 | 精确指定（ping/tcping/批量精确执行；http/dns 降级为线路） | `--nodes 5r3q67qdmmvd0jpb,ojsofw0ovm3ovimf` |
 | **名称关键词**：任意子串 | 匹配节点名（城市/地区名） | `--nodes 上海`、`--nodes '北京,广州,深圳'` |
 
-### 4.2 单目标模式与批量模式的粒度差异（重要）
+### 4.2 各模式的节点粒度（重要）
 
-| | ping / tcping / http / dns | batch-ping / batch-tcping |
-|---|---|---|
-| 线路分组 | ✅ 支持 | ✅ 支持 |
-| 名称关键词 | ⚠️ 协议不支持逐节点选择，工具**自动降级**为对应线路分组（终端会提示）；匹配不到线路时用全部节点 | ✅ 支持 |
-| 节点 ID | ⚠️ 同上（降级） | ✅ 支持 |
-| 节点数量 | 由 itdog 决定（该线路全部节点） | 每任务 5 个，自动分片 |
+| | ping / tcping | http / dns | batch-ping / batch-tcping |
+|---|---|---|---|
+| 线路分组 | ✅ 支持 | ✅ 支持 | ✅ 支持 |
+| 名称关键词 | ✅ **精确到节点**（自动解析为节点列表） | ⚠️ 降级为对应线路分组（终端会提示） | ✅ 精确到节点 |
+| 节点 ID | ✅ **精确到节点**（同上） | ⚠️ 同上（降级） | ✅ 精确（每任务 5 个，自动分片） |
+| 节点数量 | 精确时即所选节点数；线路时由 itdog 决定 | 由 itdog 决定（该线路全部节点） | 每任务 5 个，自动分片 |
+
+> **精确执行原理**：itdog 单目标端点（`/ping/` 等）的 `line` 表单字段只支持线路过滤，
+> 工具会把所选节点解析为显式列表后**借道批量端点**（每任务 5 个节点分片串行）实现精确执行。
+> **互斥约束**：指定了自定义 DNS（`--dns-server`）时与精确选择互斥——批量端点没有 DNS 参数，
+> 将自动回退为线路过滤并在终端提示原因。
 
 ### 4.3 查看可用节点
 
@@ -255,7 +260,7 @@ itdog ping example.com --refresh-nodes
 
 ### 4.4 分片耗时预估
 
-批量模式的总耗时 ≈ 分片数 × 单任务耗时（10~30 秒/片）。例如 `--nodes '北京,上海'`（约 10 个节点 → 2 片）约 1 分钟；选 40 个节点 → 8 片 → 约 4~5 分钟。**选节点越精准，总耗时越短。**
+批量模式与单目标精确选择的总耗时 ≈ 分片数 × 单任务耗时（10~30 秒/片）。例如 `--nodes '北京,上海'`（约 10 个节点 → 2 片）约 1 分钟；选 40 个节点 → 8 片 → 约 4~5 分钟。**选节点越精准，总耗时越短。**
 
 ---
 
@@ -372,7 +377,7 @@ jq -r '.summary.stats[:5][] | "\(.ip)  \(.latencyMs)ms  \(.name)"' out.json
 #!/bin/bash
 # 从候选 IP 列表里优选：按三网核心节点平均延迟排序
 itdog batch-ping $(cat candidates.txt | head -20) \
-  --nodes '北京,上海,广州,深圳' --quiet --json优选.json
+  --nodes '北京,上海,广州,深圳' --quiet --json 优选.json
 jq -r '.summary.stats
       | map(select(.latencyMs != null))
       | group_by(.ip)
@@ -474,6 +479,6 @@ itdog ping example.com --refresh-nodes      # 每次运行前刷新
 ## 12. 已知限制与合规
 
 - 本工具复刻 itdog.cn 网页前端的非官方接口，**接口可能随时变化**（自救方法见第 10 节）。
-- 单目标模式（ping/tcping/http/dns）由 itdog 决定节点范围，只能按线路分组筛选；逐节点选择仅批量模式支持。
+- 节点粒度：ping/tcping 支持精确到节点（借道批量端点，每任务 5 个分片串行）；http/dns 仅支持线路分组过滤；**指定自定义 DNS 时与精确选择互斥**，自动回退线路过滤。
 - 每次运行创建真实测速任务，**请勿高频/并发滥用**（建议单机串行、间隔 ≥1 分钟），否则可能触发验证码或 IP 封禁。
 - 测速结果仅供个人参考，商用决策请以官方服务为准。

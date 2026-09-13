@@ -1,0 +1,25 @@
+# Velox —— 多上游测速平台 一键容器化部署
+# 用法：docker compose up -d --build
+# 访问：http://localhost:8818
+
+services:
+  velox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: velox
+    ports:
+      - "8818:8818"
+    environment:
+      # 01. 可选：为未来「优选」项目提供的 API 鉴权 KEY（设置后写操作需 Bearer 头）
+      #     GET /api/health /api/nodes /api/meta/providers 不受限（Web 前端友好）
+      - VELOX_API_KEY=${VELOX_API_KEY:-}
+      # 02. 上游开关（当前仅 itdog；如需临时禁用设 0/false）
+      - PROVIDER_ITDOG_ENABLED=${PROVIDER_ITDOG_ENABLED:-1}
+    volumes:
+      # 持久化节点表 / 历史 / 上游缓存（容器内以非 root 用户 velox 运行）
+      - velox-cache:/home/velox/.cache/itdog-cli
+    restart: unless-stopped
+
+volumes:
+  velox-cache:
