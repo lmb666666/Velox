@@ -1,6 +1,6 @@
 # Velox 完整使用教程
 
-> 本工具品牌为 **Velox**（IP/CDN 网络优选平台），品牌规范见 [docs/BRAND.md](BRAND.md)；除命令行外还提供 Web 控制台，见 [docs/WEB.md](WEB.md)。
+> 本工具品牌为 **Velox**（全国监测节点测速平台），品牌规范见 [docs/BRAND.md](BRAND.md)；除命令行外还提供 Web 控制台，见 [docs/WEB.md](WEB.md)。
 
 本工具在本地命令行直接调用 [itdog.cn](https://www.itdog.cn) 的全国监测节点（290+ 个，覆盖电信/联通/移动/港澳台海外）进行测速：输入 IP 或域名，自动完成「创建测速任务 → 连接 WebSocket 收流 → 汇总输出」全过程，无需打开网页。适合日常网络诊断、CDN/IP 优选、脚本化监控等场景。
 

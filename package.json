@@ -1,6 +1,6 @@
 {
   "name": "velox",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "description": "Velox —— 调用 itdog.cn 全国监测节点测速（ping/tcping/http/dns/traceroute，支持批量与精确节点），预留多上游扩展",
   "type": "module",

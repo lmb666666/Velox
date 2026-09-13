@@ -139,7 +139,7 @@ function registerMode(mode: Mode, description: string): void {
 const program = new Command();
 program
   .name('itdog')
-  .description('Velox —— 调用 itdog.cn 全国监测节点测速与 IP 优选（非官方接口，纯命令行）')
+  .description('Velox —— 调用 itdog.cn 全国监测节点测速（非官方接口，CLI 与 Web 控制台）')
   .version(VERSION)
   .showHelpAfterError();
 

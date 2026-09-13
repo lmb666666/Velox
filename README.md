@@ -1,25 +1,31 @@
-# Velox（itdog 测速与 IP 优选平台）
+# Velox —— 全国监测节点测速平台
 
 <p align="center">
   <img src="assets/brand/logo.svg" width="96" alt="Velox" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/node-%E2%89%A518-22D3EE" alt="node >= 18" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A518.14-22D3EE" alt="node >= 18.14" />
   <img src="https://img.shields.io/badge/License-MIT-22D3EE" alt="MIT License" />
   <img src="https://img.shields.io/badge/%E4%B8%8A%E6%B8%B8-itdog-38BDF8" alt="测速上游 itdog" />
 </p>
 
-**Velox** —— 全国监测节点测速与 IP/CDN 优选平台。
+**Velox** —— 调用 itdog.cn 全国监测节点的网络测速平台。
 
 <p align="center">
   <img src="docs/images/screenshot-idle-light.png" width="820" alt="Velox Web 控制台" />
-</p>输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。架构为 **provider 统一调度**：上游实现统一接口后注册即可被调度（当前内置 itdog，预留多上游扩展与故障自动切换）。提供 **CLI** 与 **Web 控制台** 两种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，为后续 Cloudflare/多 CDN 自动优选预留架构。
+</p>输入 IP/域名，自动调用 [itdog.cn](https://www.itdog.cn) 全国 290+ 监测点（电信/联通/移动/港澳台海外）完成测速，无需打开网页。架构为 **provider 统一调度**：上游实现统一接口后注册即可被调度（当前内置 itdog，预留多上游扩展与故障自动切换）。提供 **CLI**、**Web 控制台** 与**终端 TUI** 三种使用方式，支持 ping / tcping / http / dns / traceroute 与批量多目标测试，ping/tcping 可精确指定监测点执行；为后续 Cloudflare/多 CDN 自动优选预留架构。
 
 > 非官方接口工具，仅供个人测速学习使用；请控制频率，勿用于压测或批量抓取。
-> **Inspect. Select. Accelerate.** —— 测速发现问题，优选解决问题。
+> **Inspect. Select. Accelerate.** —— 测得准，才选得对。
 
 ## 快速开始
+
+**方式一：下载单文件可执行程序（免 Node 环境，推荐）**
+
+从 [Releases](https://github.com/lmb666666/Velox/releases) 下载对应平台的 `velox-<版本>-<平台>` 文件：Windows 双击 `velox.exe` 进入终端菜单（可启动 Web 控制台或直接在终端测速）；Linux/macOS(需自行签名) 在终端运行 `./velox serve`。
+
+**方式二：源码运行**
 
 ```bash
 pnpm install
@@ -27,6 +33,9 @@ pnpm build && pnpm web:build
 
 # Web 控制台（推荐）：浏览器打开 http://localhost:8818
 pnpm serve
+
+# 终端 TUI 菜单（与 exe 双击相同的交互界面）
+node dist/cli.js
 
 # 命令行（velox 或 itdog 均可）
 node dist/cli.js ping www.baidu.com
@@ -37,12 +46,16 @@ node dist/cli.js batch-ping 1.1.1.1 8.8.8.8 --nodes '北京,上海'
 
 `pnpm serve` 后浏览器访问 `http://localhost:8818`：
 
-- 7 种模式图形化配置，节点快捷预设 + 逐节点多选弹窗
+- 7 种模式图形化配置；节点选择器（快捷预设 + 全模式逐节点弹窗）：ping/tcping 按所选节点**精确执行**，http/dns 自动按线路降级并明示
 - 结果与历史标注来源上游，任务可随时取消
-- SSE 帧级实时结果流（波形 Logo 加载动效、数据行滑入过渡），任务可随时取消
+- SSE 帧级实时结果流（波形 Logo 加载动效、数据行滑入过渡）
 - 汇总指标卡、省份分布地图（懒加载）、分线路条形图、最快 TopN、JSON/CSV/Hosts 一键下载
 - 历史记录（最近 50 次）回看、深浅色主题切换、响应式布局
 - 基于 React 19 + Vite + Tailwind + shadcn/ui 组件体系 + framer-motion
+
+<p align="center">
+  <img src="docs/images/screenshot-results-light.png" width="820" alt="Velox 测速结果与地图" />
+</p>
 
 详见 [docs/WEB.md](docs/WEB.md)。
 
@@ -79,9 +92,12 @@ pnpm build:exe node22-win-x64        # 仅指定平台
 
 ```
 src/
-├── cli.ts          # CLI 入口（测速模式 + serve 子命令）
-├── service.ts      # runTest 共用服务（CLI 与 Web 复用）
-├── web/server.ts   # Web 后端：REST + SSE + 串行队列 + 历史
+├── cli.ts          # CLI 入口（测速模式 + serve 子命令 + TUI 入口）
+├── tui.ts          # 终端 TUI 主菜单（exe 双击默认界面）
+├── service.ts      # runTest 共用服务（CLI / Web / TUI 复用）
+├── web/server.ts   # Web 后端：REST + SSE + 串行队列 + 历史 + 内嵌前端服务
+├── self-dir.ts     # 产物目录自适配（tsc ESM / esbuild CJS / pkg 快照）
+├── web-assets.ts   # 内嵌资源占位（打包时由 esbuild 虚拟模块注入）
 ├── client.ts       # 任务创建：guard 重试状态机、HTML 解析
 ├── ws.ts           # 结果流：握手、空闲重发、重连
 ├── modes.ts        # 各模式路径与表单构造
@@ -93,13 +109,14 @@ src/
 web/                # Web 前端（React + Vite + Tailwind + shadcn/ui）
 assets/
 ├── brand/          # 品牌 SVG 资产
-├── nodes.json      # 节点表快照（294 监测点）
+├── nodes.json      # 节点表快照
 └── guard-auto.js   # itdog 官方 WAF 脚本快照
 docs/
 ├── TUTORIAL.md     # CLI 完整使用教程
 ├── WEB.md          # Web 控制台指南
 └── BRAND.md        # 品牌手册
 scripts/
+├── build-exe.mjs        # 单文件可执行打包（win/linux 多平台）
 ├── refresh-guard.mjs    # 更新 WAF 快照
 └── extract-strings.mjs  # 从官方混淆 JS 提取 WS 盐等常量
 ```
