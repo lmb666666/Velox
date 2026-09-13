@@ -99,6 +99,11 @@ export function HistoryPanel({
                     {relativeTime(it.createdAt)}
                   </span>
                   <Badge variant="outline" className="shrink-0">{it.mode}</Badge>
+                  {it.provider && (
+                    <span className="shrink-0 rounded border border-border/70 px-1 py-0.5 text-[10px] text-muted-foreground" title="结果来源上游">
+                      {it.provider}
+                    </span>
+                  )}
                   <span className="num min-w-0 flex-1 truncate">{it.targets.join(', ')}</span>
                   {it.error ? (
                     <Badge variant="danger" className="shrink-0">失败</Badge>

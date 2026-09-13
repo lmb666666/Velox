@@ -3,8 +3,8 @@ import animate from 'tailwindcss-animate';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Pulse 脉测 品牌主题（详见 docs/BRAND.md）
- * 主色：电光青 #22D3EE（脉冲色）；中性：石墨 zinc 系；语义色见 index.css
+ * Velox 品牌主题（详见 docs/BRAND.md）
+ * 主色：电光青 #00E5C7（脉冲色）；中性：石墨 zinc 系；语义色见 index.css
  */
 const config: Config = {
   darkMode: 'class',
@@ -66,10 +66,15 @@ const config: Config = {
         'pulse-dash': {
           to: { 'stroke-dashoffset': '-24' },
         },
+        'progress-slide': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
       },
       animation: {
         'pulse-glow': 'pulse-glow 1.6s ease-in-out infinite',
         'pulse-dash': 'pulse-dash 0.9s linear infinite',
+        'progress-slide': 'progress-slide 1.4s ease-in-out infinite',
       },
     },
   },

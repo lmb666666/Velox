@@ -1,24 +1,37 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, CheckCircle2, Clock3, Download, Gauge, MapPin, Timer, X, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VeloxMark } from '@/components/BrandLogo';
-import { ChinaMap } from '@/components/ChinaMap';
 import { gradeOf, latencyClass } from '@/lib/grade';
 import type { Frame, Mode, NodeStat, RunResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+// 地图（d3-geo + 省界 GeoJSON 体积较大）懒加载，拆出主 bundle
+const ChinaMap = lazy(() => import('@/components/ChinaMap').then((m) => ({ default: m.ChinaMap })));
 
 function fmtMs(v: number | undefined | null): string {
   return v === undefined || v === null || Number.isNaN(v) ? '-' : `${v} ms`;
 }
 
+/** 未收到完成信号的原因 → 中文（与后端 ws.ts StreamResult.reason 对应） */
+const REASON_LABELS: Record<string, string> = {
+  closed: '连接关闭',
+  'overall-timeout': '整体超时',
+  'idle-timeout': '空闲超时',
+  error: '连接异常',
+};
+
 function frameOk(f: Frame): boolean {
+  // 与后端 aggregate.normalizeFrame 的成功口径对齐（勿单侧修改，否则运行卡与汇总计数会矛盾）
   if (f.type !== undefined && f.type !== 'success') return false;
-  if (f.ip === 'Not Found' || f.ip === '0.0.0.0') return false;
-  if (f.http_code !== undefined) return f.http_code > 0;
+  if (f.http_code !== undefined) return f.http_code > 0 && f.all_time !== undefined; // http：状态码 + 总耗时
+  if (f.time !== undefined) return true; // dns：有解析耗时即成功
+  if (f.ip === 'Not Found' || f.ip === '0.0.0.0' || f.ip === '127.0.0.1') return false; // ping/tcping：非法 IP
   const n = typeof f.result === 'number' ? f.result : Number.parseFloat(String(f.result ?? ''));
   return Number.isFinite(n) && n >= 0;
 }
@@ -32,6 +45,7 @@ export function ResultPanel({
   result,
   error,
   taskId,
+  onStop,
 }: {
   phase: ResultPhase;
   frames: Frame[];
@@ -39,6 +53,8 @@ export function ResultPanel({
   result: RunResult | null;
   error?: string;
   taskId?: string;
+  /** 用户主动停止查看（前端断开 SSE 并返回空态） */
+  onStop?: () => void;
 }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -54,6 +70,15 @@ export function ResultPanel({
     setMapFilter(null);
   }, [result, taskId]);
 
+  // 运行卡成功/失败计数：按 节点|IP 去重后统计（批量多目标同节点多帧不重复计）
+  const frameStats = useMemo(() => {
+    const uniq = new Map<string, Frame>();
+    for (const f of frames) uniq.set(`${String(f.node_id ?? '')}|${String(f.ip ?? '')}`, f);
+    const list = [...uniq.values()];
+    const ok = list.filter(frameOk).length;
+    return { ok, bad: list.length - ok };
+  }, [frames]);
+
   if (phase === 'idle') {
     const steps = [
       { n: '1', title: '输入目标', desc: 'IP / 域名 / CIDR 网段' },
@@ -67,7 +92,7 @@ export function ResultPanel({
           <div className="grid gap-3 sm:grid-cols-3">
             {steps.map((s) => (
               <div key={s.n} className="w-44 rounded-lg border bg-card/50 p-3">
-                <div className="num mb-1 text-xs font-bold text-primary">{s.n}</div>
+                <div className="num mb-1 text-xs font-semibold text-primary">{s.n}</div>
                 <div className="text-sm font-medium">{s.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{s.desc}</div>
               </div>
@@ -83,7 +108,7 @@ export function ResultPanel({
     return (
       <Card className="border-destructive/40">
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-          <XCircle className="h-8 w-8 text-red-500" />
+          <XCircle className="h-8 w-8 grade-bad" />
           <p className="text-sm font-medium">测试失败</p>
           <p className="max-w-md text-sm text-muted-foreground">{error}</p>
         </CardContent>
@@ -111,10 +136,17 @@ export function ResultPanel({
               <div className="num mt-1 text-xs text-muted-foreground">
                 已运行 {elapsed}s｜{statusLines[statusLines.length - 1] ?? '正在排队…'}
               </div>
+              {/* 进度：已收帧 / 总节点；总节点未知（运行早期）时进入 indeterminate 流动动画 */}
+              <Progress value={summary?.totalNodes ? Math.min(100, Math.round((frames.length / summary.totalNodes) * 100)) : undefined} className="mt-2" />
             </div>
-            <div className="hidden gap-2 sm:flex">
-              <Badge variant="success" className="num">{frames.filter(frameOk).length} 成功</Badge>
-              <Badge variant="danger" className="num">{frames.filter((f) => !frameOk(f)).length} 失败</Badge>
+            <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <Badge variant="success" className="num whitespace-nowrap">{frameStats.ok} 成功</Badge>
+              <Badge variant="danger" className="num whitespace-nowrap">{frameStats.bad} 失败</Badge>
+              {onStop && (
+                <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={onStop} aria-label="停止本次测试">
+                  <X className="h-3 w-3" /> 停止
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -124,11 +156,26 @@ export function ResultPanel({
       {summary && (
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{summary.mode}</Badge>
+          {result?.provider && (
+            <Badge variant="outline" className="text-muted-foreground" title="结果来源上游">
+              {result.provider}
+            </Badge>
+          )}
+          {summary.degradedTo && (
+            <Badge className="grade-mid-bg" title={`itdog 单目标端点仅支持线路过滤，本次已降级为${summary.degradedTo}执行`}>
+              已按{summary.degradedTo}降级
+            </Badge>
+          )}
+          {summary.requestedNodes !== undefined && summary.requestedNodes !== summary.totalNodes && (
+            <Badge variant="outline" className="text-muted-foreground">
+              选中 {summary.requestedNodes} · 实测 {summary.totalNodes}
+            </Badge>
+          )}
           <span className="num text-sm font-medium">{summary.targets.join(', ')}</span>
           {result!.finished ? (
             <Badge variant="success">已完成</Badge>
           ) : (
-            <Badge className="bg-amber-500/15 text-amber-500 hover:bg-amber-500/15">部分结果</Badge>
+            <Badge className="grade-mid-bg">部分结果</Badge>
           )}
         </div>
       )}
@@ -138,13 +185,13 @@ export function ResultPanel({
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { icon: Gauge, label: '平均延迟', value: fmtMs(summary.overallAvg), tint: 'bg-primary/10 text-primary' },
-            { icon: Timer, label: '最快', value: fmtMs(summary.overallMin), tint: 'bg-emerald-500/10 text-emerald-500' },
-            { icon: Clock3, label: '最慢', value: fmtMs(summary.overallMax), tint: 'bg-amber-500/10 text-amber-500' },
+            { icon: Timer, label: '最快', value: fmtMs(summary.overallMin), tint: 'grade-ok-bg' },
+            { icon: Clock3, label: '最慢', value: fmtMs(summary.overallMax), tint: 'grade-mid-bg' },
             {
               icon: CheckCircle2,
               label: '成功率',
               value: summary.totalNodes > 0 ? `${Math.round((summary.okNodes / summary.totalNodes) * 100)}%` : '-',
-              tint: 'bg-sky-500/10 text-sky-500',
+              tint: 'grade-fine-bg',
               sub: `${summary.okNodes}/${summary.totalNodes} 节点`,
             },
           ].map((c, i) => (
@@ -183,7 +230,7 @@ export function ResultPanel({
               <button
                 type="button"
                 onClick={() => setMapFilter(null)}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-primary/15"
                 aria-label={`清除省份筛选 ${mapFilter}`}
               >
                 {mapFilter} <X className="h-3 w-3" />
@@ -191,7 +238,9 @@ export function ResultPanel({
             )}
           </CardHeader>
           <CardContent>
-            <ChinaMap stats={summary.stats} filter={mapFilter} onFilterChange={setMapFilter} />
+            <Suspense fallback={<div className="flex h-64 items-center justify-center text-sm text-muted-foreground">地图组件加载中…</div>}>
+              <ChinaMap stats={summary.stats} filter={mapFilter} onFilterChange={setMapFilter} />
+            </Suspense>
           </CardContent>
         </Card>
       )}
@@ -247,7 +296,10 @@ export function ResultPanel({
               >
                 <span className="opacity-70">#{i + 1}</span>
                 {t.name}
-                <span className={latencyClass(t.latencyMs ?? 0)}>{t.latencyMs}ms</span>
+                <span className={cn('inline-flex items-center gap-0.5', latencyClass(t.latencyMs ?? 0))}>
+                  {t.latencyMs}ms
+                  <span className="opacity-80">{gradeOf(t.latencyMs ?? 0).label}</span>
+                </span>
               </span>
             ))}
           </CardContent>
@@ -268,7 +320,7 @@ export function ResultPanel({
                   size="sm"
                   className="h-7 gap-1 text-xs"
                   onClick={() => downloadHosts(hostsHostname(summary.targets)!, summary)}
-                  title="生成 hosts 优选文件（按实测延迟排序）"
+                  title="生成 hosts 文件（按实测延迟排序，取最快节点）"
                 >
                   <Download className="h-3 w-3" /> Hosts
                 </Button>
@@ -283,9 +335,9 @@ export function ResultPanel({
           </CardHeader>
           <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {!result!.finished && (
-              <div className="mb-2 flex items-center gap-1.5 text-xs text-amber-500">
+              <div className="mb-2 flex items-center gap-1.5 text-xs grade-mid">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                未收到完成信号（{result!.reason}），以下为已收到的部分结果
+                未收到完成信号（{REASON_LABELS[result!.reason] ?? result!.reason}），以下为已收到的部分结果
               </div>
             )}
             {summary.mode === 'traceroute' ? (
@@ -332,12 +384,12 @@ export function ResultPanel({
                       <td className="num px-2 py-1.5 text-muted-foreground">{frames.length - i}</td>
                       <td className="px-2 py-1.5">{String(f.name ?? '')}</td>
                       <td className="num px-2 py-1.5">{String(f.ip ?? '')}</td>
-                      <td className={cn('num px-2 py-1.5 text-right', frameOk(f) && Number.isFinite(n) ? latencyClass(n) : 'text-red-400')}>
+                      <td className={cn('num px-2 py-1.5 text-right', frameOk(f) && Number.isFinite(n) ? latencyClass(n) : 'grade-bad')}>
                         {f.result !== undefined
                           ? `${f.result} ms`
                           : f.all_time !== undefined
                             ? `${Math.round(Number(f.all_time) * 1000)} ms` // itdog http 耗时单位为秒
-                            : '失败'}
+                            : '失败'}{frameOk(f) && Number.isFinite(n) ? ` ${gradeOf(n).label}` : ''}
                       </td>
                     </motion.tr>
                   );
@@ -391,7 +443,7 @@ function StatsTable({ mode, stats }: { mode: Mode; stats: NodeStat[] }) {
               {!isHttp && !isDns && <TableCell className="hidden md:table-cell text-muted-foreground">{s.province}/{s.region}</TableCell>}
               <TableCell className="num">{s.ip}</TableCell>
               {!isDns && (
-                <TableCell className={cn('num text-right', s.ok && s.latencyMs !== undefined ? latencyClass(s.latencyMs) : 'text-red-400')}>
+                <TableCell className={cn('num text-right', s.ok && s.latencyMs !== undefined ? latencyClass(s.latencyMs) : 'grade-bad')}>
                   {s.ok ? (
                     <>
                       {fmtMs(s.latencyMs)}
@@ -472,7 +524,7 @@ function downloadCsv(summary: RunResult['summary']): void {
 
 function downloadHosts(hostname: string, summary: RunResult['summary']): void {
   const lines: string[] = [
-    '# Velox IP 优选结果（Inspect. Select. Accelerate.）',
+    '# Velox 测速结果（Inspect. Select. Accelerate.）',
     `# 目标: ${hostname} · 实测节点: ${summary.stats.length} · 生成时间: ${new Date().toLocaleString('zh-CN')}`,
     '#',
   ];

@@ -12,6 +12,13 @@ export const MODES: { value: Mode; label: string; hint: string; batch: boolean }
   { value: 'batch-tcping', label: '批量 TCPing', hint: '多目标 TCP 测试', batch: true },
 ];
 
+/** 测速上游（provider） —— 供「测速上游」选择器使用（当前内置 itdog，接口层预留多上游扩展） */
+export const PROVIDERS: { value: string; label: string; hint: string }[] = [
+  { value: 'auto', label: '自动（推荐）', hint: '使用内置上游 itdog.cn，全国 290+ 监测点' },
+  { value: 'itdog', label: 'itdog.cn', hint: '全国 290+ 监测点，数据最成熟' },
+];
+export type ProviderValue = (typeof PROVIDERS)[number]['value'];
+
 export interface Frame {
   ip?: string;
   result?: string | number;
@@ -90,6 +97,19 @@ export interface TestSummary {
   carriers: CarrierSummary[];
   top: NodeStat[];
   stats: NodeStat[];
+  /** 用户精确选择的节点数（批量端点精确执行时填入） */
+  requestedNodes?: number;
+  /** 精确选择不可用时的降级目标描述（如「电信、联通线路」） */
+  degradedTo?: string;
+}
+
+/** 纯线路选择器判定（与后端 itdogProvider.isPureLineSpec 口径一致，勿单侧修改） */
+const PURE_LINE_SPECS = new Set(['', 'all', '全部', 'telecom', 'unicom', 'mobile', 'overseas', '电信', '联通', '移动', '海外', '境外']);
+
+export function isPureLineSpec(spec: string | undefined): boolean {
+  const s = (spec ?? 'all').trim();
+  if (s === '') return true;
+  return s.split(',').every((p) => PURE_LINE_SPECS.has(p.trim()) || PURE_LINE_SPECS.has(p.trim().toLowerCase()));
 }
 
 export interface RunResult {
@@ -97,16 +117,21 @@ export interface RunResult {
   frames: Frame[];
   finished: boolean;
   reason: string;
+  /** 结果来自哪个上游（当前内置 itdog） */
+  provider?: string;
 }
 
 export interface TestRequest {
   mode: Mode;
   targets: string[];
   nodes?: string;
+  /** 测速上游：auto(默认) | itdog */
+  provider?: string;
   port?: number;
   timeoutSec?: number;
   idleTimeoutSec?: number;
   top?: number;
+  retry?: number;
   sort?: 'latency' | 'loss';
   proxy?: string;
   checkMode?: 'fast' | 'slow';
@@ -127,11 +152,15 @@ export interface TestRequest {
 export interface NodeInfo {
   id: string;
   name: string;
+  /** 节点来源上游（当前内置 itdog） */
+  provider?: string;
 }
 
 export interface NodesResponse {
   total: number;
   categories: Record<string, NodeInfo[]>;
+  /** 当前节点表来源上游 */
+  provider?: string;
 }
 
 export interface HistoryItem {
@@ -143,6 +172,8 @@ export interface HistoryItem {
   okNodes?: number;
   totalNodes?: number;
   overallAvg?: number;
+  /** 结果来源上游（当前内置 itdog） */
+  provider?: string;
   error?: string;
 }
 
@@ -170,8 +201,13 @@ export function createTest(req: TestRequest): Promise<{ id: string; state: strin
   });
 }
 
+/** 取消任务：排队中的直接取消；执行中的中止结果流（对应后端 DELETE /api/tests/:id） */
+export function cancelTest(id: string): Promise<{ ok: boolean; state: string }> {
+  return jsonFetch(`/api/tests/${id}`, { method: 'DELETE' });
+}
+
 export interface StreamHandlers {
-  onSnapshot?: (snap: { state: string; frames: Frame[]; summary?: TestSummary; finished?: boolean; reason?: string; error?: string }) => void;
+  onSnapshot?: (snap: { state: string; frames: Frame[]; summary?: TestSummary; finished?: boolean; reason?: string; error?: string; provider?: string }) => void;
   onStatus?: (line: string) => void;
   onFrame?: (frame: Frame, index: number) => void;
   onDone?: (result: RunResult) => void;
@@ -204,8 +240,18 @@ export function streamTest(id: string, h: StreamHandlers): () => void {
   return () => es.close();
 }
 
-export function getNodes(): Promise<NodesResponse> {
-  return jsonFetch('/api/nodes');
+export function getNodes(provider?: string): Promise<NodesResponse> {
+  const qs = provider && provider !== 'auto' ? `?provider=${encodeURIComponent(provider)}` : '';
+  return jsonFetch(`/api/nodes${qs}`);
+}
+
+export interface ProviderMeta {
+  id: string;
+  name: string;
+  supportedModes: string[];
+}
+export function getProviderMeta(): Promise<{ providers: ProviderMeta[]; default: string }> {
+  return jsonFetch('/api/meta/providers');
 }
 
 export function refreshNodes(): Promise<{ updated: number; total: number }> {

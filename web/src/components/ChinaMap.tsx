@@ -50,12 +50,12 @@ export interface ProvinceAgg {
   nodes: NodeStat[];
 }
 
-/** 等级 → 填充色（与 lib/grade 四级一一对应，无数据为中性灰） */
+/** 等级 → 填充色（读 --grade-* token，与 lib/grade 四级一一对应，无数据为中性灰） */
 const GRADE_FILL: Record<string, string> = {
-  'grade-ok': '#00e5c7',
-  'grade-fine': '#7c9fff',
-  'grade-mid': '#ffb020',
-  'grade-bad': '#ff5c5c',
+  'grade-ok': 'hsl(var(--grade-ok))',
+  'grade-fine': 'hsl(var(--grade-fine))',
+  'grade-mid': 'hsl(var(--grade-mid))',
+  'grade-bad': 'hsl(var(--grade-bad))',
 };
 
 function fillColor(agg: ProvinceAgg | undefined): string {
@@ -65,10 +65,10 @@ function fillColor(agg: ProvinceAgg | undefined): string {
 }
 
 const LEGEND = [
-  { label: '优 ≤50ms', color: '#00e5c7' },
-  { label: '良 ≤150ms', color: '#7c9fff' },
-  { label: '中 ≤300ms', color: '#ffb020' },
-  { label: '差 >300ms', color: '#ff5c5c' },
+  { label: '优 ≤50ms', color: 'hsl(var(--grade-ok))' },
+  { label: '良 ≤150ms', color: 'hsl(var(--grade-fine))' },
+  { label: '中 ≤300ms', color: 'hsl(var(--grade-mid))' },
+  { label: '差 >300ms', color: 'hsl(var(--grade-bad))' },
   { label: '无数据', color: 'hsl(240 5% 78%)' },
 ];
 
@@ -158,9 +158,20 @@ export function ChinaMap({
               fillOpacity={agg ? 0.88 : 0.6}
               stroke={selected ? 'hsl(187 86% 53%)' : 'hsl(var(--background))'}
               strokeWidth={selected ? 2 : 0.6}
-              className="cursor-pointer transition-[fill-opacity,stroke-width] duration-150 hover:fill-opacity-100"
+              tabIndex={0}
+              role="button"
+              aria-label={`省份 ${province}，${agg ? `平均 ${agg.avg ?? '无数据'} ms` : '无数据'}`}
+              aria-pressed={selected}
+              className="cursor-pointer transition-[fill-opacity,stroke-width] duration-150 hover:fill-opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onMouseMove={(e) => handleMove(e, province)}
+              onMouseLeave={() => setTooltip(null)}
               onClick={() => onFilterChange(selected ? null : province)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onFilterChange(selected ? null : province);
+                }
+              }}
             />
           );
         })}
@@ -183,8 +194,10 @@ export function ChinaMap({
         >
           <div className="mb-1 flex items-center justify-between">
             <span className="font-semibold">{tooltip.agg.province}</span>
-            <span className={cn('num', tooltip.agg.avg !== undefined ? latencyClass(tooltip.agg.avg) : 'text-muted-foreground')}>
-              {tooltip.agg.avg !== undefined ? `${tooltip.agg.avg} ms` : '无成功数据'}
+            <span className={cn('num inline-flex items-center gap-1', tooltip.agg.avg !== undefined ? latencyClass(tooltip.agg.avg) : 'text-muted-foreground')}>
+              {tooltip.agg.avg !== undefined ? (
+                <>{tooltip.agg.avg} ms <span className="opacity-80">{gradeOf(tooltip.agg.avg).label}</span></>
+              ) : '无成功数据'}
             </span>
           </div>
           <div className="mb-1.5 text-muted-foreground">

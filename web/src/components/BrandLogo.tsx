@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Velox 品牌标志（docs/BRAND.md 规范内联渲染）
- * 两笔式 V：左臂石墨下沉（测量），右臂电光青上扬（优选）。
+ * 两笔式 V：左臂石墨下沉（测量），右臂电光青上扬（测速结论）。
  * variant:
  *  - tile   深色方砖主标志
  *  - mono   单色自适应（currentColor，跟随文字颜色）
@@ -71,7 +71,7 @@ export function VeloxMark({
         strokeLinecap="round"
         strokeDasharray={loading ? '30 24' : undefined}
       />
-      {/* 右臂：电光青上扬（优选） */}
+      {/* 右臂：电光青上扬（测速结论） */}
       <polyline
         points="60,94 106,24"
         fill="none"
@@ -90,18 +90,5 @@ export function VeloxMark({
         className={loading ? 'animate-pulse-glow' : undefined}
       />
     </svg>
-  );
-}
-
-/** 页头横排组合：标志 + Velox 字标 + 定位语 */
-export function BrandLockup({ loading = false, className }: { loading?: boolean; className?: string }) {
-  return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <VeloxMark size={36} loading={loading} />
-      <div className="flex flex-col leading-none">
-        <span className="text-[17px] font-bold tracking-tight">Velox</span>
-        <span className="mt-1 text-[11px] text-muted-foreground">全网实测 · IP/CDN 优选</span>
-      </div>
-    </div>
   );
 }

@@ -36,9 +36,9 @@ export function NavBar({ running, nodesTotal }: { running: boolean; nodesTotal?:
           className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <VeloxMark size={28} loading={running} />
-          <span className="text-[17px] font-bold tracking-tight">Velox</span>
+          <span className="text-[17px] font-semibold tracking-tight">Velox</span>
           <span className="hidden rounded-full border border-border/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground md:inline-block">
-            全网实测 · IP 优选
+            全网实测 · 多节点测速
           </span>
         </button>
 

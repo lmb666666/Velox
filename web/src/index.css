@@ -93,11 +93,19 @@
     background-clip: text;
     color: transparent;
   }
-  /* 质量四级文字色 */
+  /* 质量四级（文字色 + 背景器 + 边框器，唯一语义来源，供地图/表格/徽章统一引用） */
   .grade-ok { color: hsl(var(--grade-ok)); }
   .grade-fine { color: hsl(var(--grade-fine)); }
   .grade-mid { color: hsl(var(--grade-mid)); }
   .grade-bad { color: hsl(var(--grade-bad)); }
+  .grade-ok-bg { background: hsl(var(--grade-ok) / 0.12); color: hsl(var(--grade-ok)); }
+  .grade-fine-bg { background: hsl(var(--grade-fine) / 0.12); color: hsl(var(--grade-fine)); }
+  .grade-mid-bg { background: hsl(var(--grade-mid) / 0.12); color: hsl(var(--grade-mid)); }
+  .grade-bad-bg { background: hsl(var(--grade-bad) / 0.12); color: hsl(var(--grade-bad)); }
+  .grade-ok-border { border-color: hsl(var(--grade-ok) / 0.5); }
+  .grade-fine-border { border-color: hsl(var(--grade-fine) / 0.5); }
+  .grade-mid-border { border-color: hsl(var(--grade-mid) / 0.5); }
+  .grade-bad-border { border-color: hsl(var(--grade-bad) / 0.5); }
 }
 
 /* 细滚动条 */

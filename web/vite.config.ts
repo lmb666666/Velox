@@ -18,6 +18,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 1200,
+    // 主 chunk 已通过 ChinaMap 懒加载拆分；超出此值仍告警
+    chunkSizeWarningLimit: 700,
   },
 });
